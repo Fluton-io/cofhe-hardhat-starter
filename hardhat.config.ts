@@ -12,6 +12,11 @@ const config: HardhatUserConfig = {
     version: "0.8.25",
     settings: {
       evmVersion: "cancun",
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+      viaIR: true,
     },
   },
   defaultNetwork: "arb-sepolia",
@@ -21,7 +26,9 @@ const config: HardhatUserConfig = {
 
     // Sepolia testnet configuration
     "eth-sepolia": {
-      url: process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia.publicnode.com",
+      url:
+        process.env.SEPOLIA_RPC_URL ||
+        "https://ethereum-sepolia.publicnode.com",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 11155111,
       gasMultiplier: 1.2,
@@ -31,7 +38,9 @@ const config: HardhatUserConfig = {
 
     // Arbitrum Sepolia testnet configuration
     "arb-sepolia": {
-      url: process.env.ARBITRUM_SEPOLIA_RPC_URL || "https://sepolia-rollup.arbitrum.io/rpc",
+      url:
+        process.env.ARBITRUM_SEPOLIA_RPC_URL ||
+        "https://sepolia-rollup.arbitrum.io/rpc",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 421614,
       gasMultiplier: 1.2,
