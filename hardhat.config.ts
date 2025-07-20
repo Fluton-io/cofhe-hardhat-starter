@@ -3,7 +3,6 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
 import "cofhe-hardhat-plugin";
 import * as dotenv from "dotenv";
-import "./tasks";
 
 dotenv.config();
 
@@ -22,8 +21,6 @@ const config: HardhatUserConfig = {
   defaultNetwork: "arb-sepolia",
   // defaultNetwork: 'localcofhe',
   networks: {
-    // The plugin already provides localcofhe configuration
-
     // Sepolia testnet configuration
     "eth-sepolia": {
       url:
@@ -54,6 +51,7 @@ const config: HardhatUserConfig = {
     apiKey: {
       "eth-sepolia": process.env.ETHERSCAN_API_KEY || "",
       "arb-sepolia": process.env.ARBISCAN_API_KEY || "",
+      arbitrumSepolia: process.env.ARBISCAN_API_KEY || "",
     },
   },
 };
