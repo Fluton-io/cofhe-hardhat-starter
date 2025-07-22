@@ -11,6 +11,9 @@ importers:
       '@fhenixprotocol/contracts':
         specifier: ^0.3.1
         version: 0.3.1
+      fhenixjs:
+        specifier: ^0.4.1
+        version: 0.4.1
     devDependencies:
       '@fhenixprotocol/cofhe-contracts':
         specifier: ^0.0.13
@@ -1075,6 +1078,10 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fhenixjs@0.4.1:
+    resolution: {integrity: sha512-q+IgMHFhTrXpsdrDox67Qw4InffCPYiNnXpn8cUThmfKMLGOhVzp4TgMc4xG5yajVroIw+Fle1C8SJILxG+BVQ==}
+    engines: {node: '>=20.0.0'}
 
   fill-range@7.1.1:
     resolution: {integrity: sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==}
@@ -3488,6 +3495,12 @@ snapshots:
   fdir@6.4.3(picomatch@4.0.2):
     optionalDependencies:
       picomatch: 4.0.2
+
+  fhenixjs@0.4.1:
+    dependencies:
+      '@types/node': 20.17.30
+      tweetnacl: 1.0.3
+      tweetnacl-util: 0.15.1
 
   fill-range@7.1.1:
     dependencies:

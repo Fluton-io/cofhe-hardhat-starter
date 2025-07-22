@@ -30,7 +30,7 @@ async function deployConfidentialERC20(config: DeploymentConfig) {
   try {
     // Try to check if it has FHERC20-specific functions
     const testContract = await ethers.getContractAt(
-      "ConfidentialERC20",
+      "contracts/ConfidentialERC20.sol:ConfidentialERC20",
       config.underlyingToken
     );
     await testContract.erc20();
@@ -44,7 +44,7 @@ async function deployConfidentialERC20(config: DeploymentConfig) {
 
   // Deploy ConfidentialERC20
   const ConfidentialERC20 = await ethers.getContractFactory(
-    "ConfidentialERC20"
+    "contracts/ConfidentialERC20.sol:ConfidentialERC20"
   );
   const confidentialToken = await ConfidentialERC20.deploy(
     config.underlyingToken,
@@ -59,7 +59,7 @@ async function deployConfidentialERC20(config: DeploymentConfig) {
   console.log(`Transaction: ${deployTx?.hash}`);
 
   const confToken = await ethers.getContractAt(
-    "ConfidentialERC20",
+    "contracts/ConfidentialERC20.sol:ConfidentialERC20",
     confidentialAddress
   );
   const confName = await confToken.name();

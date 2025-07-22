@@ -38,7 +38,7 @@
     "@types/node": ">=18.0.0",
     "chai": "^4.2.0",
     "cofhe-hardhat-plugin": "^0.3.0",
-    "cofhejs": "^0.3.0",
+    "cofhejs": "^0.3.1",
     "dotenv": "^16.4.7",
     "ethers": "^6.4.0",
     "hardhat": "^2.26.0",
@@ -55,6 +55,7 @@
     "cofhejs": "^0.3.0"
   },
   "dependencies": {
-    "@fhenixprotocol/contracts": "^0.3.1"
+    "@fhenixprotocol/contracts": "^0.3.1",
+    "fhenixjs": "^0.4.1"
   }
 }

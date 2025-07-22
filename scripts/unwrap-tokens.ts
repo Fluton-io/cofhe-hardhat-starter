@@ -4,11 +4,11 @@ async function main() {
   const [signer] = await ethers.getSigners();
 
   const tokenAddress = "0xe7a31dD47e96FE04ac2C8B3c703e637Ae1ad88d5";
-  const confidentialAddress = "0x603A6e813040b23d948b591f79756B4BF7409938";
+  const confidentialAddress = "0xa2871A8cDB68BecCD53B01Ec07AC913c96590538";
 
   const token = await ethers.getContractAt("MockERC20", tokenAddress);
   const confidentialToken = await ethers.getContractAt(
-    "ConfidentialERC20",
+    "contracts/ConfidentialERC20.sol:ConfidentialERC20",
     confidentialAddress
   );
 
