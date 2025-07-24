@@ -1,5 +1,6 @@
 import { ethers } from "hardhat";
 import { Contract } from "ethers";
+import hre from "hardhat";
 
 interface DeploymentConfig {
   underlyingToken: string;
@@ -66,6 +67,27 @@ async function deployConfidentialERC20(config: DeploymentConfig) {
   const confSymbol = await confToken.symbol();
 
   console.log(`${confName} (${confSymbol}): ${confidentialAddress}`);
+
+  // Verify contract if requested
+  if (config.verify) {
+    console.log("Verifying contract...");
+    try {
+      await hre.run("verify:verify", {
+        address: confidentialAddress,
+        constructorArguments: [
+          config.underlyingToken,
+          config.symbolOverride || "",
+        ],
+      });
+      console.log("Contract verified successfully");
+    } catch (error: any) {
+      if (error.message.toLowerCase().includes("already verified")) {
+        console.log("Contract already verified");
+      } else {
+        console.error("Verification failed:", error.message);
+      }
+    }
+  }
 
   return {
     confidentialToken: confidentialAddress,

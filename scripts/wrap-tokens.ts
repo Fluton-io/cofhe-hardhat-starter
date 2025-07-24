@@ -5,7 +5,7 @@ async function main() {
 
   // Contract addresses
   const tokenAddress = "0xe7a31dD47e96FE04ac2C8B3c703e637Ae1ad88d5";
-  const confidentialAddress = "0xa2871A8cDB68BecCD53B01Ec07AC913c96590538";
+  const confidentialAddress = "0x92B7BE7B0f31d912f46fCD77EEb585034dc64d14";
 
   // Get contracts
   const token = await ethers.getContractAt("MockERC20", tokenAddress);

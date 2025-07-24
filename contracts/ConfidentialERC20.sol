@@ -105,6 +105,8 @@ contract ConfidentialERC20 is FHERC20, Ownable, ConfidentialClaim {
         FHE.decrypt(burned);
         _createClaim(to, value, burned);
         emit DecryptedERC20(msg.sender, to, value);
+
+        claimAllDecrypted();
     }
 
     /**

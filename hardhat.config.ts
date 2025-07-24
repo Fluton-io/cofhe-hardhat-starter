@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
+import "@nomicfoundation/hardhat-verify";
 import "cofhe-hardhat-plugin";
 import * as dotenv from "dotenv";
 
@@ -46,13 +47,23 @@ const config: HardhatUserConfig = {
     },
   },
 
-  // Optional: Add Etherscan verification config
+  // Etherscan verification config
   etherscan: {
     apiKey: {
       "eth-sepolia": process.env.ETHERSCAN_API_KEY || "",
       "arb-sepolia": process.env.ARBISCAN_API_KEY || "",
       arbitrumSepolia: process.env.ARBISCAN_API_KEY || "",
     },
+    customChains: [
+      {
+        network: "arb-sepolia",
+        chainId: 421614,
+        urls: {
+          apiURL: "https://api-sepolia.arbiscan.io/api",
+          browserURL: "https://sepolia.arbiscan.io/",
+        },
+      },
+    ],
   },
 };
 
