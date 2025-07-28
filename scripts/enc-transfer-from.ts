@@ -5,14 +5,12 @@ import { cofhejs, Encryptable } from "cofhejs/node";
 async function main() {
   const [signer] = await ethers.getSigners();
 
-  // Use same wallet for both owner and spender
   const owner = signer;
   const spender = signer;
 
   // Contract addresses
-  const confidentialAddress = "0xa2871A8cDB68BecCD53B01Ec07AC913c96590538";
+  const confidentialAddress = "0x38F2411515D947f4835832d00CA3D403448c389d";
 
-  // Manual recipient address - you can change this to any address
   const recipientAddress = "0x490e37e4023577436776DE92A8e1CDBF1D74226d";
   const provider = new ethers.JsonRpcProvider(
     "https://arb-sepolia.g.alchemy.com/v2/X-DloxDnihx5D3j28oyshSC43tYk-3T_"
