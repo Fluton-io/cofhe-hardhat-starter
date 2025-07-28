@@ -10,7 +10,6 @@ async function main() {
   const spender = signer;
 
   // Contract addresses
-  const tokenAddress = "0xe7a31dD47e96FE04ac2C8B3c703e637Ae1ad88d5";
   const confidentialAddress = "0xa2871A8cDB68BecCD53B01Ec07AC913c96590538";
 
   // Manual recipient address - you can change this to any address
@@ -31,7 +30,7 @@ async function main() {
   }
 
   // Get contracts
-  const token = await ethers.getContractAt("MockERC20", tokenAddress);
+
   const confidentialToken = await ethers.getContractAt(
     "contracts/ConfidentialERC20.sol:ConfidentialERC20",
     confidentialAddress

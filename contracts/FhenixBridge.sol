@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import "./interfaces/IConfidentialERC20.sol";
 
 // Union IBC packet structure
 struct IBCPacket {
@@ -24,25 +25,6 @@ interface IIBCModuleRecv {
         address relayer,
         bytes calldata relayerMsg
     ) external returns (bytes memory);
-}
-
-// Interface matching the Fhenix FHERC20 implementation
-interface IFHERC20 {
-    function transferFromEncrypted(
-        address from,
-        address to,
-        InEuint128 calldata value
-    ) external returns (euint128);
-
-    function transferEncrypted(
-        address to,
-        InEuint128 calldata encryptedAmount
-    ) external returns (euint128);
-
-    function approveEncrypted(
-        address spender,
-        InEuint128 calldata value
-    ) external returns (bool);
 }
 
 error MsgValueDoesNotMatchInputAmount();
@@ -104,7 +86,8 @@ contract FhenixBridge is
         address _outputToken,
         InEuint128 calldata _encInputAmount,
         InEuint128 calldata _encOutputAmount,
-        uint32 _destinationChainId
+        uint32 _destinationChainId,
+        IConfidentialERC20.FHERC20_EIP712_Permit calldata _permit
     ) public nonReentrant whenNotPaused {
         // Input validation
         if (
@@ -155,11 +138,12 @@ contract FhenixBridge is
             timeout: block.timestamp + 24 hours
         });
 
-        // Transfer input amount from user to bridge contract
-        IFHERC20(_inputToken).transferFromEncrypted(
-            _sender,
+        // Transfer input amount from user to bridge contract using permit
+        IConfidentialERC20(_inputToken).encTransferFrom(
+            msg.sender,
             address(this),
-            _encInputAmount
+            _encInputAmount,
+            _permit
         );
 
         intents[id] = intent;
@@ -174,7 +158,8 @@ contract FhenixBridge is
 
     function fulfill(
         Intent memory intent,
-        InEuint128 calldata _outputAmount
+        InEuint128 calldata _outputAmount,
+        IConfidentialERC20.FHERC20_EIP712_Permit calldata _permit
     ) public nonReentrant whenNotPaused {
         if (intent.relayer != msg.sender) {
             revert UnauthorizedRelayer();
@@ -188,10 +173,11 @@ contract FhenixBridge is
             revert IntentAlreadyFilled();
         }
 
-        IFHERC20(intent.outputToken).transferFromEncrypted(
+        IConfidentialERC20(intent.outputToken).encTransferFrom(
             intent.relayer, // solver
             intent.receiver, // user's receiver address
-            _outputAmount // Use provided InEuint128 for transfer
+            _outputAmount, // Use provided InEuint128 for transfer
+            _permit
         );
 
         intents[intent.id] = intent;
@@ -214,7 +200,7 @@ contract FhenixBridge is
             revert SolverAlreadyPaid();
         }
 
-        IFHERC20(intent.inputToken).transferEncrypted(
+        IConfidentialERC20(intent.inputToken).encTransfer(
             intent.relayer,
             inputAmountTransfer[intentId]
         );
@@ -238,7 +224,7 @@ contract FhenixBridge is
         require(!intent.solverPaid, "Solver already paid");
 
         // Transfer the input amount to the solver
-        IFHERC20(intent.inputToken).transferEncrypted(
+        IConfidentialERC20(intent.inputToken).encTransfer(
             intent.relayer,
             inputAmountTransfer[intentId]
         );
@@ -256,7 +242,10 @@ contract FhenixBridge is
             revert InvalidToken();
         }
         // Transfer confidential tokens from contract to owner
-        IFHERC20(tokenAddress).transferEncrypted(msg.sender, _encryptedAmount);
+        IConfidentialERC20(tokenAddress).encTransfer(
+            msg.sender,
+            _encryptedAmount
+        );
     }
 
     function getIntent(uint256 intentId) external view returns (Intent memory) {
@@ -304,7 +293,7 @@ contract FhenixBridge is
         Intent storage intent = intents[intentId];
 
         if (fulfillmentVerified && !intent.solverPaid) {
-            IFHERC20(intent.inputToken).transferEncrypted(
+            IConfidentialERC20(intent.inputToken).encTransfer(
                 intent.relayer,
                 inputAmountTransfer[intentId]
             );
