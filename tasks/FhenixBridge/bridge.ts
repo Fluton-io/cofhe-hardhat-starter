@@ -5,15 +5,15 @@ import { cofhejs, Encryptable } from "cofhejs/node";
 import { generateTransferFromPermit, appendMetadataToInput } from "../../utils";
 import { EERC20 } from "../../types/contracts/token/eERC20.sol";
 
-task("bridge", "Bridge cERC20 tokens to FHEVM")
+task("bridge", "Bridge eERC20 tokens to FHEVM")
   .addOptionalParam("signeraddress", "The address of the signer")
   .addOptionalParam("bridgeaddress", "The address of the bridge contract")
   .addOptionalParam("receiveraddress", "receiver address")
   .addOptionalParam("relayeraddress", "relayer address")
   .addOptionalParam("inputtokenaddress", "The address of the input token contract")
   .addOptionalParam("outputtokenaddress", "The address of the output token contract")
-  .addOptionalParam("inputamount", "amount to bridge", "1000000") // 1 cERC20
-  .addOptionalParam("outputamount", "amount intended to receive on the destination chain", "1000000") // 1 cERC20
+  .addOptionalParam("inputamount", "amount to bridge", "1000000") // 1 eERC20
+  .addOptionalParam("outputamount", "amount intended to receive on the destination chain", "1000000") // 1 eERC20
   .addOptionalParam("destinationchainid", "destination chain id", "11155111")
   .setAction(
     async (
@@ -89,8 +89,6 @@ task("bridge", "Bridge cERC20 tokens to FHEVM")
         valueHash: encTransferCtHashWMetadata,
       });
 
-      console.log(permit.value_hash, encTransferInput.ctHash);
-
       const tx = await bridgeContract.bridge(
         signerAddress,
         signerAddress,
@@ -104,7 +102,7 @@ task("bridge", "Bridge cERC20 tokens to FHEVM")
       );
 
       console.log(
-        `Bridging ${inputamount} cERC20 tokens from ${signerAddress} to ${receiveraddress} on chain ${destinationchainid}`
+        `Bridging ${inputamount} eERC20 tokens from ${signerAddress} to ${receiveraddress} on chain ${destinationchainid}`
       );
       console.log(`Transaction hash: ${tx.hash}`);
       await tx.wait();

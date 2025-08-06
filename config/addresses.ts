@@ -18,7 +18,7 @@ const addresses: { [key: number]: { [key: string]: string } } = {
     GATEWAYCONTRACT: "0x33347831500f1e73f0cccbb95c9f86b94d7b1123",
     AAVE_POOL: "0x1E4685cfc7631ED380eC20b73B24Fdd86548433c",
     AAVE_DATA_PROVIDER: "0x0b67c21A1e7156166025550B3E7aB6a9BbdAC50B",
-    FHEVMBridge: "0xAa845f11f61d5b6051B4dA8dEB9eb45281e886AB",
+    FHEVMBridge: "0xa2A6D43a557F320175b4F1E0FAC73e46F2082Ed0",
   },
   // arb sepolia
   421614: {
