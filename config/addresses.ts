@@ -24,6 +24,7 @@ const addresses: { [key: number]: { [key: string]: string } } = {
   421614: {
     USDC: "0x1746FB6484647F83E27Ed43460bbE30883F8F5b5",
     eUSDC: "0x45CF04612F91577676d23Fe2F10155F9b7902435", // Replace with actual cUSDC address on Arbitrum Sepolia
+    FhenixBridge: "0x5cFe32B9B71634f1c72EF633082c52d6f41f84f7",
   },
 };
 

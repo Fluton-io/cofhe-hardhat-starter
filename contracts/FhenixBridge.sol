@@ -138,6 +138,10 @@ contract FhenixBridge is
             timeout: block.timestamp + 24 hours
         });
 
+        // Allow relayer to decrypt the amounts
+        FHE.allow(encInputAmount, _relayer);
+        FHE.allow(encOutputAmount, _relayer);
+
         // Transfer input amount from user to bridge contract using permit
         IFHERC20(_inputToken).encTransferFrom(
             msg.sender,

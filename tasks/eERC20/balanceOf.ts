@@ -1,6 +1,6 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
-import { CERC20, EERC20 } from "../../types";
+import { EERC20 } from "../../types";
 import { cofhejs, FheTypes } from "cofhejs/node";
 
 task("balanceOf", "Get user balance")
