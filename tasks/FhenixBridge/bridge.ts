@@ -102,7 +102,7 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
       );
 
       console.log(
-        `Bridging ${inputamount} eERC20 tokens from ${signerAddress} to ${receiveraddress} on chain ${destinationchainid}`
+        `Bridging ${inputamount} eERC20 tokens from ${signerAddress} to ${receiveraddress} to chain ${destinationchainid}`
       );
       console.log(`Transaction hash: ${tx.hash}`);
       await tx.wait();
