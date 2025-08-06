@@ -6,6 +6,8 @@ import "@nomicfoundation/hardhat-verify";
 import "cofhe-hardhat-plugin";
 import "hardhat-deploy";
 
+import "./tasks";
+
 const MNEMONIC: string = vars.get("MNEMONIC", "test test test test test test test test test test test junk");
 const INFURA_API_KEY: string = vars.get("INFURA_API_KEY");
 const ETHERSCAN_API_KEY: string = vars.get("ETHERSCAN_API_KEY");
