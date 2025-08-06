@@ -142,6 +142,8 @@ contract FhenixBridge is
         FHE.allow(encInputAmount, _relayer);
         FHE.allow(encOutputAmount, _relayer);
 
+        FHE.allow(encInputAmount, _inputToken);
+
         // Transfer input amount from user to bridge contract using permit
         IFHERC20(_inputToken).encTransferFrom(
             msg.sender,
