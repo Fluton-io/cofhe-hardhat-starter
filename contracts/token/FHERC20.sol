@@ -63,10 +63,10 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context, EIP712, Nonces {
     // to indicate change when the real encrypted change is not yet implemented
     // in infrastructure like wallets and etherscans.
     mapping(address account => uint16) internal _indicatedBalances;
-    mapping(address account => euint128) private _encBalances;
+    mapping(address account => euint128) internal _encBalances;
 
     uint16 internal _indicatedTotalSupply;
-    euint128 private _encTotalSupply;
+    euint128 internal _encTotalSupply;
 
     string private _name;
     string private _symbol;
@@ -75,7 +75,7 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context, EIP712, Nonces {
 
     // EIP712 Permit
 
-    bytes32 private constant PERMIT_TYPEHASH =
+    bytes32 internal constant PERMIT_TYPEHASH =
         keccak256(
             "Permit(address owner,address spender,uint256 value_hash,uint256 nonce,uint256 deadline)"
         );
@@ -209,8 +209,6 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context, EIP712, Nonces {
     /**
      * @dev See {IERC20-transfer}.
      *
-     * Intended to be used as a EOA call with an encrypted input `InEuint128 inValue`.
-     *
      * Requirements:
      *
      * - `to` cannot be the zero address.
@@ -221,21 +219,10 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context, EIP712, Nonces {
         address to,
         InEuint128 memory inValue
     ) public virtual returns (euint128 transferred) {
-        return encTransfer(to, FHE.asEuint128(inValue));
+        euint128 value = FHE.asEuint128(inValue);
+        transferred = encTransfer(to, value);
     }
 
-    /**
-     * @dev See {IERC20-transfer}.
-     *
-     * Intended to be used as part of a contract call.
-     * Ensure that `value` is allowed to be used by using `FHE.allow` with this contracts address.
-     *
-     * Requirements:
-     *
-     * - `to` cannot be the zero address.
-     * - the caller must have a balance of at least `value`.
-     * - `value` must be a `euint128` to preserve confidentiality.
-     */
     function encTransfer(
         address to,
         euint128 value
@@ -286,48 +273,54 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context, EIP712, Nonces {
      * - the caller must have allowance for ``from``'s tokens of at least
      * `value`.
      */
-    function encTransferFrom(
+    function encTransferFromDirectWithMax(
+        address from,
+        address to,
+        euint128 value,
+        InEuint128 memory maxInValue,
+        FHERC20_EIP712_Permit calldata permit
+    ) public virtual returns (euint128) {
+        _verifyPermit(from, maxInValue.ctHash, permit);
+
+        euint128 maxIn = FHE.asEuint128(maxInValue);
+        value = FHE.select(FHE.lte(value, maxIn), value, FHE.asEuint128(0));
+
+        return _transfer(from, to, value);
+    }
+
+    function encTransferFromDirect(
         address from,
         address to,
         InEuint128 memory inValue,
         FHERC20_EIP712_Permit calldata permit
     ) public virtual returns (euint128 transferred) {
-        if (block.timestamp > permit.deadline)
-            revert ERC2612ExpiredSignature(permit.deadline);
-
-        if (from != permit.owner)
-            revert FHERC20EncTransferFromOwnerMismatch(from, permit.owner);
-        if (msg.sender != permit.spender)
-            revert FHERC20EncTransferFromSpenderMismatch(
-                msg.sender,
-                permit.spender
-            );
-
-        if (inValue.ctHash != permit.value_hash)
-            revert FHERC20EncTransferFromValueHashMismatch(
-                inValue.ctHash,
-                permit.value_hash
-            );
-
-        bytes32 structHash = keccak256(
-            abi.encode(
-                PERMIT_TYPEHASH,
-                permit.owner,
-                permit.spender,
-                permit.value_hash,
-                _useNonce(permit.owner),
-                permit.deadline
-            )
-        );
-
-        bytes32 hash = _hashTypedDataV4(structHash);
-
-        address signer = ECDSA.recover(hash, permit.v, permit.r, permit.s);
-        if (signer != permit.owner) {
-            revert ERC2612InvalidSigner(signer, permit.owner);
-        }
+        _verifyPermit(from, inValue.ctHash, permit);
 
         euint128 value = FHE.asEuint128(inValue);
+
+        transferred = _transfer(from, to, value);
+    }
+
+    function encTransferFrom(
+        address from,
+        address to,
+        euint128 value,
+        FHERC20_EIP712_Permit calldata permit
+    ) public virtual returns (euint128 transferred) {
+        _verifyPermit(from, euint128.unwrap(value), permit);
+        transferred = _transfer(from, to, value);
+    }
+
+    function encTransferFromWithMax(
+        address from,
+        address to,
+        euint128 value,
+        euint128 maxValue,
+        FHERC20_EIP712_Permit calldata permit
+    ) public virtual returns (euint128 transferred) {
+        _verifyPermit(from, euint128.unwrap(maxValue), permit);
+
+        value = FHE.select(FHE.lte(value, maxValue), value, FHE.asEuint128(0));
 
         transferred = _transfer(from, to, value);
     }
@@ -437,8 +430,8 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context, EIP712, Nonces {
         // Allow the caller to decrypt the transferred amount
         FHE.allow(transferred, msg.sender);
 
-        // Allow the total supply to be decrypted by anyone
-        FHE.allowGlobal(_encTotalSupply);
+        // Hide totalSupply
+        FHE.allowThis(_encTotalSupply);
 
         emit Transfer(from, to, _indicatorTick);
         emit EncTransfer(from, to, euint128.unwrap(transferred));
@@ -480,6 +473,42 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context, EIP712, Nonces {
         transferred = _update(account, address(0), FHE.asEuint128(value));
     }
 
+    /**
+     * @dev Creates a `value` amount of tokens and assigns them to `account`, by transferring it from address(0).
+     * Relies on the `_update` mechanism
+     *
+     * Emits a {Transfer} event with `from` set to the zero address.
+     *
+     * NOTE: This function is not virtual, {_update} should be overridden instead.
+     */
+    function _encMint(
+        address account,
+        euint128 value
+    ) internal returns (euint128 transferred) {
+        if (account == address(0)) {
+            revert ERC20InvalidReceiver(address(0));
+        }
+        transferred = _update(address(0), account, value);
+    }
+
+    /**
+     * @dev Destroys a `value` amount of tokens from `account`, lowering the total supply.
+     * Relies on the `_update` mechanism.
+     *
+     * Emits a {Transfer} event with `to` set to the zero address.
+     *
+     * NOTE: This function is not virtual, {_update} should be overridden instead
+     */
+    function _encBurn(
+        address account,
+        euint128 value
+    ) internal returns (euint128 transferred) {
+        if (account == address(0)) {
+            revert ERC20InvalidSender(address(0));
+        }
+        transferred = _update(account, address(0), value);
+    }
+
     // EIP712 Permit
 
     /**
@@ -507,5 +536,48 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context, EIP712, Nonces {
 
     function resetIndicatedBalance() external {
         _indicatedBalances[msg.sender] = 0;
+    }
+
+    function _verifyPermit(
+        address from,
+        uint256 inHash,
+        FHERC20_EIP712_Permit calldata permit
+    ) internal {
+        if (block.timestamp > permit.deadline) {
+            revert ERC2612ExpiredSignature(permit.deadline);
+        }
+        if (from != permit.owner) {
+            revert FHERC20EncTransferFromOwnerMismatch(from, permit.owner);
+        }
+        if (msg.sender != permit.spender) {
+            revert FHERC20EncTransferFromSpenderMismatch(
+                msg.sender,
+                permit.spender
+            );
+        }
+        if (inHash != permit.value_hash) {
+            revert FHERC20EncTransferFromValueHashMismatch(
+                inHash,
+                permit.value_hash
+            );
+        }
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                PERMIT_TYPEHASH,
+                permit.owner,
+                permit.spender,
+                permit.value_hash,
+                _useNonce(permit.owner),
+                permit.deadline
+            )
+        );
+
+        bytes32 hash = _hashTypedDataV4(structHash);
+
+        address signer = ECDSA.recover(hash, permit.v, permit.r, permit.s);
+        if (signer != permit.owner) {
+            revert ERC2612InvalidSigner(signer, permit.owner);
+        }
     }
 }

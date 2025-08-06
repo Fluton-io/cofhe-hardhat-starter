@@ -5,30 +5,24 @@ pragma solidity ^0.8.25;
 
 import {IERC20, IERC20Metadata, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IFHERC20, FHERC20} from "./FHERC20.sol";
-import {euint128, FHE} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {ConfidentialClaim} from "./ConfidentialClaim.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {euint128, FHE} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {IFHERC20, FHERC20} from "./FHERC20.sol";
+import {FHERC20UnwrapClaim} from "./FHERC20UnwrapClaim.sol";
 
-contract ConfidentialERC20 is FHERC20, Ownable, ConfidentialClaim {
-    using EnumerableSet for EnumerableSet.UintSet;
+contract FHERC20Wrapper is FHERC20, Ownable, FHERC20UnwrapClaim {
     using SafeERC20 for IERC20;
 
     IERC20 private immutable _erc20;
     string private _symbol;
 
-    event EncryptedERC20(
+    event WrappedERC20(address indexed from, address indexed to, uint128 value);
+    event UnwrappedERC20(
         address indexed from,
         address indexed to,
         uint128 value
     );
-    event DecryptedERC20(
-        address indexed from,
-        address indexed to,
-        uint128 value
-    );
-    event ClaimedDecryptedERC20(
+    event ClaimedUnwrappedERC20(
         address indexed from,
         address indexed to,
         uint128 value
@@ -52,7 +46,7 @@ contract ConfidentialERC20 is FHERC20, Ownable, ConfidentialClaim {
         Ownable(msg.sender)
         FHERC20(
             string.concat(
-                "Confidential ",
+                "FHERC20 Wrapped ",
                 IERC20Metadata(address(erc20_)).name()
             ),
             bytes(symbolOverride_).length == 0
@@ -92,42 +86,42 @@ contract ConfidentialERC20 is FHERC20, Ownable, ConfidentialClaim {
         return _erc20;
     }
 
-    function encrypt(address to, uint128 value) public {
+    function wrap(address to, uint128 value) public {
         if (to == address(0)) to = msg.sender;
         _erc20.safeTransferFrom(msg.sender, address(this), value);
         _mint(to, value);
-        emit EncryptedERC20(msg.sender, to, value);
+        emit WrappedERC20(msg.sender, to, value);
     }
 
-    function decrypt(address to, uint128 value) public {
+    function unwrap(address to, uint128 value) public {
         if (to == address(0)) to = msg.sender;
         euint128 burned = _burn(msg.sender, value);
         FHE.decrypt(burned);
         _createClaim(to, value, burned);
-        emit DecryptedERC20(msg.sender, to, value);
+        emit UnwrappedERC20(msg.sender, to, value);
     }
 
     /**
      * @notice Claim a decrypted amount of the underlying ERC20
      * @param ctHash The ctHash of the burned amount
      */
-    function claimDecrypted(uint256 ctHash) public {
+    function claimUnwrapped(uint256 ctHash) public {
         Claim memory claim = _handleClaim(ctHash);
 
         // Send the ERC20 to the recipient
         _erc20.safeTransfer(claim.to, claim.decryptedAmount);
-        emit ClaimedDecryptedERC20(msg.sender, claim.to, claim.decryptedAmount);
+        emit ClaimedUnwrappedERC20(msg.sender, claim.to, claim.decryptedAmount);
     }
 
     /**
      * @notice Claim all decrypted amounts of the underlying ERC20
      */
-    function claimAllDecrypted() public {
+    function claimAllUnwrapped() public {
         Claim[] memory claims = _handleClaimAll();
 
         for (uint256 i = 0; i < claims.length; i++) {
             _erc20.safeTransfer(claims[i].to, claims[i].decryptedAmount);
-            emit ClaimedDecryptedERC20(
+            emit ClaimedUnwrappedERC20(
                 msg.sender,
                 claims[i].to,
                 claims[i].decryptedAmount

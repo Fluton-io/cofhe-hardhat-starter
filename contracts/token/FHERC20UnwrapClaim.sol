@@ -5,12 +5,12 @@ pragma solidity ^0.8.25;
 
 import {IERC20, IERC20Metadata, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IFHERC20, FHERC20} from "./FHERC20.sol";
-import {euint128, FHE} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {euint128, FHE} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {IFHERC20, FHERC20} from "./FHERC20.sol";
 
-abstract contract ConfidentialClaim {
+abstract contract FHERC20UnwrapClaim {
     using EnumerableSet for EnumerableSet.UintSet;
 
     struct Claim {
