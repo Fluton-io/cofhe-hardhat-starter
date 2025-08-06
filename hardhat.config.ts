@@ -1,13 +1,29 @@
-import { HardhatUserConfig } from "hardhat/config";
+import type { HardhatUserConfig } from "hardhat/config";
+import { vars } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-verify";
 import "cofhe-hardhat-plugin";
-import * as dotenv from "dotenv";
+import "hardhat-deploy";
 
-dotenv.config();
+const MNEMONIC: string = vars.get("MNEMONIC", "test test test test test test test test test test test junk");
+const INFURA_API_KEY: string = vars.get("INFURA_API_KEY");
+const ETHERSCAN_API_KEY: string = vars.get("ETHERSCAN_API_KEY");
+const ARBISCAN_API_KEY: string = vars.get("ARBISCAN_API_KEY");
+
+const DEPLOYER_PRIVATE_KEY = vars.get("DEPLOYER_PRIVATE_KEY");
+const USER_PRIVATE_KEY = vars.get("USER_PRIVATE_KEY");
+const RELAYER_PRIVATE_KEY = vars.get("RELAYER_PRIVATE_KEY");
+
+const accounts = [DEPLOYER_PRIVATE_KEY, USER_PRIVATE_KEY, RELAYER_PRIVATE_KEY];
 
 const config: HardhatUserConfig = {
+  defaultNetwork: "arb-sepolia",
+  namedAccounts: {
+    deployer: 0,
+    user: 1,
+    relayer: 2,
+  },
   solidity: {
     version: "0.8.25",
     settings: {
@@ -19,15 +35,12 @@ const config: HardhatUserConfig = {
       viaIR: true,
     },
   },
-  defaultNetwork: "arb-sepolia",
   // defaultNetwork: 'localcofhe',
   networks: {
     // Sepolia testnet configuration
     "eth-sepolia": {
-      url:
-        process.env.SEPOLIA_RPC_URL ||
-        "https://ethereum-sepolia.publicnode.com",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
+      accounts,
       chainId: 11155111,
       gasMultiplier: 1.2,
       timeout: 60000,
@@ -36,10 +49,8 @@ const config: HardhatUserConfig = {
 
     // Arbitrum Sepolia testnet configuration
     "arb-sepolia": {
-      url:
-        process.env.ARBITRUM_SEPOLIA_RPC_URL ||
-        "https://sepolia-rollup.arbitrum.io/rpc",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      url: `https://arbitrum-sepolia.infura.io/v3/${INFURA_API_KEY}`,
+      accounts,
       chainId: 421614,
       gasMultiplier: 1.2,
       timeout: 60000,
@@ -50,9 +61,8 @@ const config: HardhatUserConfig = {
   // Etherscan verification config
   etherscan: {
     apiKey: {
-      "eth-sepolia": process.env.ETHERSCAN_API_KEY || "",
-      "arb-sepolia": process.env.ARBISCAN_API_KEY || "",
-      arbitrumSepolia: process.env.ARBISCAN_API_KEY || "",
+      "eth-sepolia": ETHERSCAN_API_KEY,
+      "arb-sepolia": ARBISCAN_API_KEY,
     },
     customChains: [
       {
@@ -64,6 +74,10 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+  },
+  typechain: {
+    outDir: "types",
+    target: "ethers-v6",
   },
 };
 
