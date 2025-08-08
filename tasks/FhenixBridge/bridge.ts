@@ -3,17 +3,27 @@ import addresses from "../../config/addresses";
 import { FhenixBridge } from "../../types";
 import { cofhejs, Encryptable } from "cofhejs/node";
 import { generateTransferFromPermit, appendMetadataToInput } from "../../utils";
-import { EERC20 } from "../../types/contracts/token/eERC20.sol";
+import { EERC20 } from "../../types";
 
 task("bridge", "Bridge eERC20 tokens to FHEVM")
   .addOptionalParam("signeraddress", "The address of the signer")
   .addOptionalParam("bridgeaddress", "The address of the bridge contract")
   .addOptionalParam("receiveraddress", "receiver address")
   .addOptionalParam("relayeraddress", "relayer address")
-  .addOptionalParam("inputtokenaddress", "The address of the input token contract")
-  .addOptionalParam("outputtokenaddress", "The address of the output token contract")
+  .addOptionalParam(
+    "inputtokenaddress",
+    "The address of the input token contract"
+  )
+  .addOptionalParam(
+    "outputtokenaddress",
+    "The address of the output token contract"
+  )
   .addOptionalParam("inputamount", "amount to bridge", "1000000") // 1 eERC20
-  .addOptionalParam("outputamount", "amount intended to receive on the destination chain", "1000000") // 1 eERC20
+  .addOptionalParam(
+    "outputamount",
+    "amount intended to receive on the destination chain",
+    "1000000"
+  ) // 1 eERC20
   .addOptionalParam("destinationchainid", "destination chain id", "11155111")
   .setAction(
     async (
@@ -37,12 +47,14 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
 
       if (!inputtokenaddress) {
         const tokenDeployment = await deployments.get("eERC20");
-        inputtokenaddress = tokenDeployment.address || addresses[+chainId].eUSDC; // Default to deployed
+        inputtokenaddress =
+          tokenDeployment.address || addresses[+chainId].eUSDC; // Default to deployed
       }
 
       if (!bridgeaddress) {
         const bridgeDeployment = await deployments.get("FhenixBridge");
-        bridgeaddress = bridgeDeployment.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
+        bridgeaddress =
+          bridgeDeployment.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
       }
 
       if (!outputtokenaddress) {
@@ -62,8 +74,16 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
         relayeraddress = (await getNamedAccounts()).relayer; // Default to relayer address
       }
 
-      const bridgeContract = (await ethers.getContractAt("FhenixBridge", bridgeaddress, signer)) as FhenixBridge;
-      const tokenContract = (await ethers.getContractAt("eERC20", inputtokenaddress, signer)) as unknown as EERC20;
+      const bridgeContract = (await ethers.getContractAt(
+        "FhenixBridge",
+        bridgeaddress,
+        signer
+      )) as FhenixBridge;
+      const tokenContract = (await ethers.getContractAt(
+        "eERC20",
+        inputtokenaddress,
+        signer
+      )) as unknown as EERC20;
 
       await cofhe.expectResultSuccess(
         await cofhejs.initializeWithEthers({
@@ -77,10 +97,12 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
         Encryptable.uint128(inputamount),
         Encryptable.uint128(outputamount),
       ] as const);
-      const [encTransferInput, encTransferOutput] = await hre.cofhe.expectResultSuccess(encTransferResult);
+      const [encTransferInput, encTransferOutput] =
+        await hre.cofhe.expectResultSuccess(encTransferResult);
 
       // permit creation
-      const encTransferCtHashWMetadata = appendMetadataToInput(encTransferInput);
+      const encTransferCtHashWMetadata =
+        appendMetadataToInput(encTransferInput);
       const permit = await generateTransferFromPermit({
         token: tokenContract,
         signer,
