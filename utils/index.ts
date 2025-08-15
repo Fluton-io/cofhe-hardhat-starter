@@ -3,7 +3,10 @@ import { FHERC20, IFHERC20 } from "../types";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { FheTypes } from "cofhejs/node";
 
-export const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay));
+export * from "./taskHelper";
+
+export const sleep = (delay: number) =>
+  new Promise((resolve) => setTimeout(resolve, delay));
 
 // temporary function for generating transfer from permit, delete when fhenix team adds this to sdk
 type GeneratePermitOptions = {
@@ -25,7 +28,8 @@ export const generateTransferFromPermit = async (
 ): Promise<IFHERC20.FHERC20_EIP712_PermitStruct> => {
   let { token, signer, owner, spender, valueHash, nonce, deadline } = options;
 
-  const { name, version, chainId, verifyingContract } = await token.eip712Domain();
+  const { name, version, chainId, verifyingContract } =
+    await token.eip712Domain();
 
   // If nonce is not provided, get it from the token
   if (nonce == null) nonce = await token.nonces(owner);
@@ -87,8 +91,13 @@ const TRIVIALLY_ENCRYPTED_MASK = 0xff - UINT_TYPE_MASK; // 0x80
 const SHIFTED_TYPE_MASK = BigInt(UINT_TYPE_MASK) << 8n; // 0x7f00n
 
 // Helper function to encode isTrivial + uintType into a byte
-const getByteForTrivialAndType = (isTrivial: boolean, uintType: number): number => {
-  return (isTrivial ? TRIVIALLY_ENCRYPTED_MASK : 0x00) | (uintType & UINT_TYPE_MASK);
+const getByteForTrivialAndType = (
+  isTrivial: boolean,
+  uintType: number
+): number => {
+  return (
+    (isTrivial ? TRIVIALLY_ENCRYPTED_MASK : 0x00) | (uintType & UINT_TYPE_MASK)
+  );
 };
 
 // Main function to append metadata
@@ -103,7 +112,9 @@ export const appendMetadata = (
   // Emulate uint8(int8(securityZone)) in Solidity
   const securityZoneByte = BigInt(((securityZone << 24) >> 24) & 0xff);
 
-  const metadata = (BigInt(getByteForTrivialAndType(isTrivial, uintType)) << 8n) | securityZoneByte;
+  const metadata =
+    (BigInt(getByteForTrivialAndType(isTrivial, uintType)) << 8n) |
+    securityZoneByte;
 
   return result | metadata;
 };
@@ -114,7 +125,12 @@ export const appendMetadataToInput = (encryptedInput: {
   securityZone: number;
   utype: FheTypes;
 }): bigint => {
-  return appendMetadata(encryptedInput.ctHash, encryptedInput.securityZone, encryptedInput.utype, false);
+  return appendMetadata(
+    encryptedInput.ctHash,
+    encryptedInput.securityZone,
+    encryptedInput.utype,
+    false
+  );
 };
 
 // temporary part ends here

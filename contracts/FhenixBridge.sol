@@ -181,6 +181,9 @@ contract FhenixBridge is
 
         euint128 encOutputAmount = FHE.asEuint128(_outputAmount);
 
+        FHE.allow(encOutputAmount, intent.relayer);
+        FHE.allow(encOutputAmount, intent.outputToken);
+
         IFHERC20(intent.outputToken).encTransferFrom(
             intent.relayer, // solver
             intent.receiver, // user's receiver address
@@ -191,8 +194,6 @@ contract FhenixBridge is
         intents[intent.id] = intent;
         intents[intent.id].filledStatus = FilledStatus.FILLED;
         doesIntentExist[intent.id] = true;
-
-        outputAmountTransfer[intent.id] = _outputAmount;
 
         emit IntentFulfilled(intent);
     }

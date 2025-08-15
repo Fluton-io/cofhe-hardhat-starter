@@ -22,8 +22,7 @@ task("wrap", "Wrap your erc20 into eERC20")
     }
 
     if (!tokenaddress) {
-      const tokenDeployment = await deployments.get("eERC20");
-      tokenaddress = tokenDeployment.address || addresses[+chainId].eUSDC; // Default to deployed
+      tokenaddress = addresses[+chainId].eTEST_TOKEN; // Default to deployed
     }
 
     // Approval check

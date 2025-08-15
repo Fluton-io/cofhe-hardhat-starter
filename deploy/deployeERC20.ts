@@ -15,7 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     throw new Error(`No addresses found for chainId ${chainId}`);
   }
 
-  const constructorArguments = [addresses[+chainId].USDC, "eUSDC"];
+  const constructorArguments = [addresses[+chainId].TEST_TOKEN, "eUSDC"];
 
   const deployed = await deploy("eERC20", {
     from: deployer,

@@ -8,7 +8,10 @@ import "hardhat-deploy";
 
 import "./tasks";
 
-const MNEMONIC: string = vars.get("MNEMONIC", "test test test test test test test test test test test junk");
+const MNEMONIC: string = vars.get(
+  "MNEMONIC",
+  "test test test test test test test test test test test junk"
+);
 const INFURA_API_KEY: string = vars.get("INFURA_API_KEY");
 const ETHERSCAN_API_KEY: string = vars.get("ETHERSCAN_API_KEY");
 const ARBISCAN_API_KEY: string = vars.get("ARBISCAN_API_KEY");
@@ -23,8 +26,8 @@ const config: HardhatUserConfig = {
   defaultNetwork: "arb-sepolia",
   namedAccounts: {
     deployer: 0,
-    user: 1,
-    relayer: 2,
+    user: 0,
+    relayer: 0,
   },
   solidity: {
     version: "0.8.25",
@@ -63,7 +66,7 @@ const config: HardhatUserConfig = {
   // Etherscan verification config
   etherscan: {
     apiKey: {
-      "eth-sepolia": ETHERSCAN_API_KEY,
+      sepolia: "2EPCPHNJG6VCJ3IMQFIUYRPG9NDC8AUX2I",
       "arb-sepolia": ARBISCAN_API_KEY,
     },
     customChains: [
