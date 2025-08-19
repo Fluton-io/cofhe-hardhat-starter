@@ -555,7 +555,7 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context, EIP712, Nonces {
                 permit.spender
             );
         }
-        if (inHash != permit.value_hash) {
+        if (!_ctHashesEqualExcludingMetadata(inHash, permit.value_hash)) {
             revert FHERC20EncTransferFromValueHashMismatch(
                 inHash,
                 permit.value_hash
@@ -579,5 +579,17 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context, EIP712, Nonces {
         if (signer != permit.owner) {
             revert ERC2612InvalidSigner(signer, permit.owner);
         }
+    }
+
+    /**
+     * @dev Compares ctHashes excluding the appended metadata.
+     * XORs the hashes, and checks if the non-matching bytes is less than the metadata length.
+     * Metadata being excluded: securityZone, utype, trivially encrypted flag.
+     */
+    function _ctHashesEqualExcludingMetadata(
+        uint256 lhs,
+        uint256 rhs
+    ) internal view returns (bool) {
+        return (lhs ^ rhs) <= type(uint16).max;
     }
 }

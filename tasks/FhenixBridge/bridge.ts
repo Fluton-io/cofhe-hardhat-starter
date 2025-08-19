@@ -80,7 +80,8 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
         "FhenixBridge",
         bridgeAddr,
         signer
-      )) as FhenixBridge;
+      )) as unknown as FhenixBridge;
+
       const tokenContract = (await ethers.getContractAt(
         "eERC20",
         inputTokenAddr,
@@ -105,12 +106,13 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
       // permit creation
       const encTransferCtHashWMetadata =
         appendMetadataToInput(encTransferInput);
+
       const permit = await generateTransferFromPermit({
         token: tokenContract,
         signer,
         owner: signer.address,
         spender: bridgeAddr,
-        valueHash: encTransferCtHashWMetadata,
+        valueHash: encTransferInput.ctHash,
       });
 
       console.log(`Executing bridge transaction...`);

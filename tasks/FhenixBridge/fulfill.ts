@@ -1,10 +1,9 @@
 import { task } from "hardhat/config";
-import addresses from "../../config/addresses";
 import { FhenixBridge } from "../../types";
-import { cofhejs, Encryptable } from "cofhejs/node";
 import { generateTransferFromPermit, appendMetadataToInput } from "../../utils";
 import { EERC20 } from "../../types";
 import { createTaskHelper } from "../../utils/taskHelper";
+import { cofhejs, Encryptable } from "cofhejs/node";
 
 task("fulfill", "Fulfill a bridge intent on the destination chain")
   .addOptionalParam("signeraddress", "The address of the relayer (msg.sender)")
@@ -32,7 +31,7 @@ task("fulfill", "Fulfill a bridge intent on the destination chain")
       "FhenixBridge",
       bridgeAddr,
       signer
-    )) as FhenixBridge;
+    )) as unknown as FhenixBridge;
 
     const intentPath = path.resolve(process.cwd(), "intent.json");
     if (!fs.existsSync(intentPath)) {
@@ -42,7 +41,7 @@ task("fulfill", "Fulfill a bridge intent on the destination chain")
 
     const intentJson = JSON.parse(fs.readFileSync(intentPath, "utf8"));
     const intentArr = intentJson.intent;
-    const plainOutputAmountFromFile = intentJson.plainOutputAmount;
+    const plainOutputAmount = intentJson.plainOutputAmount;
 
     if (!Array.isArray(intentArr) || intentArr.length < 13) {
       console.log(
@@ -50,10 +49,8 @@ task("fulfill", "Fulfill a bridge intent on the destination chain")
       );
       return;
     }
-    if (!plainOutputAmountFromFile && !outputamount) {
-      console.log(
-        "No output amount available. Either provide --outputamount parameter or ensure intent.json contains plainOutputAmount"
-      );
+    if (!plainOutputAmount) {
+      console.log("No plainOutputAmount found in intent.json");
       return;
     }
 
@@ -74,19 +71,14 @@ task("fulfill", "Fulfill a bridge intent on the destination chain")
       timeout: intentArr[12],
     };
 
-    // Use outputamount parameter or plain output amount from intent file
-    let plainOutputAmount;
-    if (outputamount) {
-      plainOutputAmount = outputamount;
-      plainOutputAmount = outputamount;
-    } else {
-      plainOutputAmount = plainOutputAmountFromFile;
-    }
+    console.log(
+      "Ensuring relayer has sufficient eERC20 balance for fulfillment"
+    );
 
     // Ensure relayer has sufficient eERC20 balance for fulfillment
     await taskHelper.ensureEErc20Balance(plainOutputAmount, intent.outputToken);
 
-    // Re-encrypt the plain output amount for the destination chain
+    // Initialize cofhejs for encryption
     await cofhe.expectResultSuccess(
       await cofhejs.initializeWithEthers({
         ethersProvider: ethers.provider,
@@ -95,6 +87,7 @@ task("fulfill", "Fulfill a bridge intent on the destination chain")
       })
     );
 
+    // Encrypt the plain output amount for permit creation
     const encOutputResult = await cofhejs.encrypt([
       Encryptable.uint128(plainOutputAmount),
     ] as const);
@@ -108,39 +101,17 @@ task("fulfill", "Fulfill a bridge intent on the destination chain")
       intent.outputToken,
       signer
     )) as unknown as EERC20;
-    const encOutputCtHashWMetadata = appendMetadataToInput(encOutputAmount);
+
     const permit = await generateTransferFromPermit({
       token: outputTokenContract,
       signer,
       owner: signer.address,
       spender: bridgeAddr,
-      valueHash: encOutputCtHashWMetadata,
+      valueHash: encOutputAmount.ctHash,
     });
 
     // Call fulfill
-    // Map array to struct object for contract call
-    const intentForContract = {
-      sender: intent.sender,
-      receiver: intent.receiver,
-      relayer: intent.relayer,
-      inputToken: intent.inputToken,
-      outputToken: intent.outputToken,
-      inputAmount: intent.inputAmount,
-      outputAmount: intent.outputAmount,
-      id: intent.id,
-      originChainId: intent.originChainId,
-      destinationChainId: intent.destinationChainId,
-      filledStatus: intent.filledStatus,
-      solverPaid: intent.solverPaid,
-      timeout: intent.timeout,
-    };
-
-    console.log(`🚀 Executing fulfill transaction...`);
-    const tx = await bridgeContract.fulfill(
-      intentForContract,
-      encOutputAmount,
-      permit
-    );
+    const tx = await bridgeContract.fulfill(intent, permit);
     console.log(`Transaction hash: ${tx.hash}`);
     await tx.wait();
     console.log(`Fulfill completed successfully`);

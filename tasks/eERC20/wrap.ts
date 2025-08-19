@@ -9,7 +9,7 @@ task("wrap", "Wrap your erc20 into eERC20")
   .addOptionalParam(
     "amount",
     "The amount of tokens to wrap",
-    "1000000000000000000"
+    "10000000000000000000"
   )
   .setAction(async ({ signeraddress, tokenaddress, to, amount }, hre) => {
     const { ethers, getChainId, deployments, getNamedAccounts } = hre;

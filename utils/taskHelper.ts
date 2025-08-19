@@ -2,6 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Signer } from "ethers";
 import { EERC20, SimpleERC20 } from "../types";
 import addresses from "../config/addresses";
+import { cofhejs, FheTypes } from "cofhejs/node";
 
 export class TaskHelper {
   constructor(
@@ -15,10 +16,10 @@ export class TaskHelper {
    * Automatically mints ERC20 -> wraps to eERC20 if needed
    */
   async ensureEErc20Balance(
-    requiredAmount: string,
+    requiredAmountPlain: string,
     tokenAddress?: string
   ): Promise<string> {
-    const { ethers, deployments, getNamedAccounts } = this.hre;
+    const { ethers, deployments, getNamedAccounts, cofhe } = this.hre;
     const signerAddress = await this.signer.getAddress();
 
     // Get eERC20 token address
@@ -43,16 +44,42 @@ export class TaskHelper {
       this.signer
     )) as unknown as EERC20;
 
-    // Check current eERC20 balance
-    const eErc20Balance = await eErc20Contract.balanceOf(signerAddress);
-    const requiredAmountBigInt = BigInt(requiredAmount);
+    // Initialize cofhejs for decryption
+    await cofhe.expectResultSuccess(
+      await cofhejs.initializeWithEthers({
+        ethersProvider: ethers.provider,
+        ethersSigner: this.signer,
+        environment: "TESTNET",
+      })
+    );
 
-    if (eErc20Balance >= requiredAmountBigInt) {
+    // Get encrypted balance and decrypt it
+    const encBalance = await eErc20Contract.encBalanceOf(signerAddress);
+    console.log("Encrypted balance:", encBalance.toString());
+
+    // Decrypt current balance
+    const balanceResult = await cofhejs.unseal(encBalance, FheTypes.Uint128);
+    if (!balanceResult.success) {
+      console.log("Cannot decrypt balance, assuming zero balance");
+      // If we can't decrypt, assume zero balance and proceed with minting/wrapping
+      var currentBalance = BigInt(0);
+    } else {
+      var currentBalance = BigInt(balanceResult.data.toString());
+      console.log("Decrypted current balance:", currentBalance.toString());
+    }
+
+    // Use the plain required amount that was passed in
+    const requiredAmountDecrypted = BigInt(requiredAmountPlain);
+    console.log("Required amount (plain):", requiredAmountDecrypted.toString());
+
+    if (currentBalance >= requiredAmountDecrypted) {
+      console.log("Sufficient encrypted balance available");
       return eErc20Address;
     }
 
     // Need to wrap more eERC20
-    const shortfall = requiredAmountBigInt - eErc20Balance;
+    const shortfall = requiredAmountDecrypted - currentBalance;
+    console.log("Need to wrap additional:", shortfall.toString());
 
     // Get underlying ERC20 address
     const erc20Address = await eErc20Contract.erc20();

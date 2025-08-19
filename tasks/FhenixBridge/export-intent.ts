@@ -40,7 +40,7 @@ task("export-intent", "Export an intent from the bridge contract")
         "FhenixBridge",
         bridgeAddr,
         signer
-      )) as FhenixBridge;
+      )) as unknown as FhenixBridge;
 
       const intent = await bridgeContract.getIntent(intentid);
       console.log(`Intent: `, intent);
@@ -94,7 +94,6 @@ task("export-intent", "Export an intent from the bridge contract")
         intent,
         plainOutputAmount, // Plain text output amount for the solver
       };
-
       const outPath = path.resolve(process.cwd(), outfile);
       fs.writeFileSync(outPath, JSON.stringify(exportObj, replacer, 2));
       console.log(

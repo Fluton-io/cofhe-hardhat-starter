@@ -63,10 +63,6 @@ contract FhenixBridge is
         uint256 timeout;
     }
 
-    // Store the original InEuint128 values for transfers
-    mapping(uint256 intentId => InEuint128) public inputAmountTransfer;
-    mapping(uint256 intentId => InEuint128) public outputAmountTransfer;
-
     mapping(uint256 intentId => Intent) public intents;
     mapping(uint256 intentId => bool exists) public doesIntentExist;
     mapping(address => bool) public authorizedRelayers;
@@ -155,16 +151,11 @@ contract FhenixBridge is
         intents[id] = intent;
         doesIntentExist[id] = true;
 
-        // Store original amounts for transfers
-        inputAmountTransfer[id] = _encInputAmount;
-        outputAmountTransfer[id] = _encOutputAmount;
-
         emit IntentCreated(intent);
     }
 
     function fulfill(
         Intent memory intent,
-        InEuint128 calldata _outputAmount,
         IFHERC20.FHERC20_EIP712_Permit calldata _permit
     ) public nonReentrant whenNotPaused {
         if (intent.relayer != msg.sender) {
@@ -179,15 +170,10 @@ contract FhenixBridge is
             revert IntentAlreadyFilled();
         }
 
-        euint128 encOutputAmount = FHE.asEuint128(_outputAmount);
-
-        FHE.allow(encOutputAmount, intent.relayer);
-        FHE.allow(encOutputAmount, intent.outputToken);
-
         IFHERC20(intent.outputToken).encTransferFrom(
             intent.relayer, // solver
             intent.receiver, // user's receiver address
-            encOutputAmount, // Use provided InEuint128 for transfer
+            intent.outputAmount,
             _permit
         );
 
@@ -211,31 +197,7 @@ contract FhenixBridge is
 
         IFHERC20(intent.inputToken).encTransfer(
             intent.relayer,
-            inputAmountTransfer[intentId]
-        );
-
-        intent.solverPaid = true;
-        emit IntentRepaid(intent);
-    }
-
-    function claimTimeout(uint256 intentId) external nonReentrant {
-        if (!doesIntentExist[intentId]) {
-            revert IntentNotFound();
-        }
-
-        Intent storage intent = intents[intentId];
-
-        require(
-            msg.sender == intent.relayer,
-            "Only designated solver can claim"
-        );
-        require(block.timestamp > intent.timeout, "Timeout not reached");
-        require(!intent.solverPaid, "Solver already paid");
-
-        // Transfer the input amount to the solver
-        IFHERC20(intent.inputToken).encTransfer(
-            intent.relayer,
-            inputAmountTransfer[intentId]
+            intent.inputAmount
         );
 
         intent.solverPaid = true;
@@ -301,7 +263,7 @@ contract FhenixBridge is
         if (fulfillmentVerified && !intent.solverPaid) {
             IFHERC20(intent.inputToken).encTransfer(
                 intent.relayer,
-                inputAmountTransfer[intentId]
+                intent.inputAmount
             );
 
             intent.solverPaid = true;
