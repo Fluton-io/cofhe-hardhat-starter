@@ -63,7 +63,7 @@ const config: HardhatUserConfig = {
   // Etherscan verification config
   etherscan: {
     apiKey: {
-      "eth-sepolia": ETHERSCAN_API_KEY,
+      sepolia: ETHERSCAN_API_KEY,
       "arb-sepolia": ARBISCAN_API_KEY,
     },
     customChains: [

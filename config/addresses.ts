@@ -19,12 +19,14 @@ const addresses: { [key: number]: { [key: string]: string } } = {
     AAVE_POOL: "0x1E4685cfc7631ED380eC20b73B24Fdd86548433c",
     AAVE_DATA_PROVIDER: "0x0b67c21A1e7156166025550B3E7aB6a9BbdAC50B",
     FHEVMBridge: "0xa2A6D43a557F320175b4F1E0FAC73e46F2082Ed0",
+    eUSDC: "0x2Ce559C8836C17F2aaDB3E6eE1f976C58114E95A", // Replace with actual cUSDC address on Arbitrum Sepolia
+    FhenixBridge: "0x7E89EA7BDE89F3233CBE30273dDCEd8B966681fd",
   },
   // arb sepolia
   421614: {
     USDC: "0x1746FB6484647F83E27Ed43460bbE30883F8F5b5",
-    eUSDC: "0x45CF04612F91577676d23Fe2F10155F9b7902435", // Replace with actual cUSDC address on Arbitrum Sepolia
-    FhenixBridge: "0x5cFe32B9B71634f1c72EF633082c52d6f41f84f7",
+    eUSDC: "0x353e69f463f78987917b5C2505eb7635B7200CFd", // Replace with actual cUSDC address on Arbitrum Sepolia
+    FhenixBridge: "0xc356D78C3CD10dCf54d60530AACbA10F33291128",
   },
 };
 

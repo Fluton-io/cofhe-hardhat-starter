@@ -1,9 +1,8 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
-import { FhenixBridge } from "../../types";
+import { EERC20, FhenixBridge } from "../../types";
 import { cofhejs, Encryptable } from "cofhejs/node";
 import { generateTransferFromPermit, appendMetadataToInput } from "../../utils";
-import { EERC20 } from "../../types/contracts/token/eERC20.sol";
 
 task("bridge", "Bridge eERC20 tokens to FHEVM")
   .addOptionalParam("signeraddress", "The address of the signer")
