@@ -107,6 +107,20 @@ contract FhenixBridge is
         euint128 encInputAmount = FHE.asEuint128(_encInputAmount);
         euint128 encOutputAmount = FHE.asEuint128(_encOutputAmount);
 
+        // Allow relayer to decrypt the amounts
+        FHE.allow(encInputAmount, _relayer);
+        FHE.allow(encOutputAmount, _relayer);
+
+        FHE.allow(encInputAmount, _inputToken);
+
+        // Transfer input amount from user to bridge contract using permit
+        IFHERC20(_inputToken).encTransferFrom(
+            msg.sender,
+            address(this),
+            encInputAmount,
+            _permit
+        );
+
         uint256 id = uint256(
             keccak256(
                 abi.encodePacked(
@@ -138,20 +152,6 @@ contract FhenixBridge is
             timeout: block.timestamp + 24 hours
         });
 
-        // Allow relayer to decrypt the amounts
-        FHE.allow(encInputAmount, _relayer);
-        FHE.allow(encOutputAmount, _relayer);
-
-        FHE.allow(encInputAmount, _inputToken);
-
-        // Transfer input amount from user to bridge contract using permit
-        IFHERC20(_inputToken).encTransferFrom(
-            msg.sender,
-            address(this),
-            encInputAmount,
-            _permit
-        );
-
         intents[id] = intent;
         doesIntentExist[id] = true;
 
@@ -181,6 +181,8 @@ contract FhenixBridge is
 
         euint128 encOutputAmount = FHE.asEuint128(_outputAmount);
 
+        FHE.allow(encOutputAmount, intent.outputToken);
+
         IFHERC20(intent.outputToken).encTransferFrom(
             intent.relayer, // solver
             intent.receiver, // user's receiver address
@@ -192,7 +194,39 @@ contract FhenixBridge is
         intents[intent.id].filledStatus = FilledStatus.FILLED;
         doesIntentExist[intent.id] = true;
 
-        outputAmountTransfer[intent.id] = _outputAmount;
+        emit IntentFulfilled(intent);
+    }
+
+    function fulfill(
+        Intent memory intent,
+        euint128 _outputAmount,
+        IFHERC20.FHERC20_EIP712_Permit calldata _permit
+    ) public nonReentrant whenNotPaused {
+        if (intent.relayer != msg.sender) {
+            revert UnauthorizedRelayer();
+        }
+
+        // Check if this intent already exists and is filled on THIS chain
+        if (
+            doesIntentExist[intent.id] &&
+            intents[intent.id].filledStatus == FilledStatus.FILLED
+        ) {
+            revert IntentAlreadyFilled();
+        }
+
+        FHE.allowTransient(_outputAmount, intent.relayer);
+        FHE.allow(_outputAmount, intent.outputToken);
+
+        IFHERC20(intent.outputToken).encTransferFrom(
+            intent.relayer, // solver
+            intent.receiver, // user's receiver address
+            _outputAmount, // Use provided InEuint128 for transfer
+            _permit
+        );
+
+        intents[intent.id] = intent;
+        intents[intent.id].filledStatus = FilledStatus.FILLED;
+        doesIntentExist[intent.id] = true;
 
         emit IntentFulfilled(intent);
     }

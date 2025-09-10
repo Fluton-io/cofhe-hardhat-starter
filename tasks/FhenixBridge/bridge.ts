@@ -50,7 +50,7 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
             `Please either provide the output token address or ensure the destination chain ID ${destinationchainid} is defined in addresses.ts`
           );
         }
-        outputtokenaddress = addresses[+destinationchainid].cUSDC; // Default to deployed output token address
+        outputtokenaddress = addresses[+destinationchainid].eUSDC; // Default to deployed output token address
       }
 
       if (!receiveraddress) {
@@ -61,7 +61,11 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
         relayeraddress = (await getNamedAccounts()).relayer; // Default to relayer address
       }
 
-      const bridgeContract = (await ethers.getContractAt("FhenixBridge", bridgeaddress, signer)) as FhenixBridge;
+      const bridgeContract = (await ethers.getContractAt(
+        "FhenixBridge",
+        bridgeaddress,
+        signer
+      )) as unknown as FhenixBridge;
       const tokenContract = (await ethers.getContractAt("eERC20", inputtokenaddress, signer)) as unknown as EERC20;
 
       await cofhe.expectResultSuccess(
@@ -104,6 +108,7 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
         `Bridging ${inputamount} eERC20 tokens from ${signerAddress} to ${receiveraddress} to chain ${destinationchainid}`
       );
       console.log(`Transaction hash: ${tx.hash}`);
+      console.log("cthash: ", encTransferOutput.ctHash);
       await tx.wait();
       console.log(`Bridging completed successfully. 🤌`);
     }

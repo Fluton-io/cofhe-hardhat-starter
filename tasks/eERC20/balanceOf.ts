@@ -27,8 +27,14 @@ task("balanceOf", "Get user balance")
     const encryptedBalance = await tokenContract.encBalanceOf(userAddress);
     const indicatedBalance = await tokenContract.balanceOf(userAddress);
 
-    console.log(`Encrypted Balance of ${userAddress} in token ${tokenaddress} is`, encryptedBalance.toString());
-    console.log(`Indicated Balance of ${userAddress} in token ${tokenaddress} is`, indicatedBalance.toString());
+    console.log(
+      `Encrypted Balance of ${userAddress} in token ${tokenaddress} on chain ${chainId} is`,
+      encryptedBalance.toString()
+    );
+    console.log(
+      `Indicated Balance of ${userAddress} in token ${tokenaddress} on chain ${chainId} is`,
+      indicatedBalance.toString()
+    );
 
     await cofhe.expectResultSuccess(
       await cofhejs.initializeWithEthers({
@@ -39,5 +45,8 @@ task("balanceOf", "Get user balance")
     );
     const unsealedBalance = await cofhe.expectResultSuccess(await cofhejs.unseal(encryptedBalance, FheTypes.Uint128));
 
-    console.log(`Unsealed Balance of ${userAddress} in token ${tokenaddress} is`, unsealedBalance.toString());
+    console.log(
+      `Unsealed Balance of ${userAddress} in token ${tokenaddress} on chain ${chainId} is`,
+      unsealedBalance.toString()
+    );
   });
