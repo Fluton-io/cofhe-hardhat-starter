@@ -13,7 +13,7 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
   .addOptionalParam("outputtokenaddress", "The address of the output token contract")
   .addOptionalParam("inputamount", "amount to bridge", "1000000") // 1 eERC20
   .addOptionalParam("outputamount", "amount intended to receive on the destination chain", "1000000") // 1 eERC20
-  .addOptionalParam("destinationchainid", "destination chain id", "11155111")
+  .addOptionalParam("destinationchainid", "destination chain id")
   .setAction(
     async (
       {
@@ -42,6 +42,10 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
       if (!bridgeaddress) {
         const bridgeDeployment = await deployments.get("FhenixBridge");
         bridgeaddress = bridgeDeployment.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
+      }
+
+      if (!destinationchainid) {
+        destinationchainid = chainId === "11155111" ? "421614" : "11155111"; // Default to current chain ID
       }
 
       if (!outputtokenaddress) {
