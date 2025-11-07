@@ -53,27 +53,39 @@ contract FhenixBridge is
         address relayer;
         address inputToken;
         address outputToken;
-        euint128 inputAmount;
-        euint128 outputAmount;
+        euint64 inputAmount;
+        euint64 outputAmount;
         uint256 id;
         uint32 originChainId;
-        uint32 destinationChainId;
+        euint32 destinationChainId;
         FilledStatus filledStatus;
         bool solverPaid;
         uint256 timeout;
     }
 
-    // Store the original InEuint128 values for transfers
-    mapping(uint256 intentId => InEuint128) public inputAmountTransfer;
-    mapping(uint256 intentId => InEuint128) public outputAmountTransfer;
+    // Store the original InEuint64 values for transfers
+    mapping(uint256 intentId => InEuint64) public inputAmountTransfer;
+    mapping(uint256 intentId => InEuint64) public outputAmountTransfer;
 
     mapping(uint256 intentId => Intent) public intents;
     mapping(uint256 intentId => bool exists) public doesIntentExist;
     mapping(address => bool) public authorizedRelayers;
 
-    event IntentFulfilled(Intent intent);
-    event IntentCreated(Intent intent);
-    event IntentRepaid(Intent intent);
+    event IntentCreated(
+        address indexed sender,
+        address indexed relayer,
+        Intent intent
+    );
+    event IntentFulfilled(
+        address indexed sender,
+        address indexed relayer,
+        Intent intent
+    );
+    event IntentRepaid(
+        address indexed sender,
+        address indexed relayer,
+        Intent intent
+    );
     event RelayerAuthorizationChanged(address indexed relayer, bool authorized);
 
     constructor() Ownable(msg.sender) {}
@@ -84,10 +96,9 @@ contract FhenixBridge is
         address _relayer,
         address _inputToken,
         address _outputToken,
-        InEuint128 calldata _encInputAmount,
-        InEuint128 calldata _encOutputAmount,
-        uint32 _destinationChainId,
-        IFHERC20.FHERC20_EIP712_Permit calldata _permit
+        InEuint64 calldata _encInputAmount,
+        InEuint64 calldata _encOutputAmount,
+        InEuint32 calldata _destinationChainId
     ) public nonReentrant whenNotPaused {
         // Input validation
         if (
@@ -100,25 +111,23 @@ contract FhenixBridge is
         if (_inputToken == address(0) || _outputToken == address(0)) {
             revert InvalidToken();
         }
-        if (_destinationChainId == 0 || _destinationChainId == block.chainid) {
-            revert InvalidChainId();
-        }
 
-        euint128 encInputAmount = FHE.asEuint128(_encInputAmount);
-        euint128 encOutputAmount = FHE.asEuint128(_encOutputAmount);
+        euint64 encInputAmount = FHE.asEuint64(_encInputAmount);
+        euint64 encOutputAmount = FHE.asEuint64(_encOutputAmount);
+        euint32 destinationChainId = FHE.asEuint32(_destinationChainId);
 
         // Allow relayer to decrypt the amounts
         FHE.allow(encInputAmount, _relayer);
         FHE.allow(encOutputAmount, _relayer);
+        FHE.allow(destinationChainId, _relayer);
 
         FHE.allow(encInputAmount, _inputToken);
 
         // Transfer input amount from user to bridge contract using permit
-        IFHERC20(_inputToken).encTransferFrom(
+        IFHERC20(_inputToken).confidentialTransferFrom(
             msg.sender,
             address(this),
-            encInputAmount,
-            _permit
+            encInputAmount
         );
 
         uint256 id = uint256(
@@ -129,7 +138,7 @@ contract FhenixBridge is
                     _relayer,
                     _inputToken,
                     _outputToken,
-                    _destinationChainId,
+                    destinationChainId,
                     block.timestamp,
                     block.number // Add block number for better uniqueness
                 )
@@ -146,7 +155,7 @@ contract FhenixBridge is
             outputAmount: encOutputAmount,
             id: id,
             originChainId: uint32(block.chainid),
-            destinationChainId: _destinationChainId,
+            destinationChainId: destinationChainId,
             filledStatus: FilledStatus.NOT_FILLED,
             solverPaid: false,
             timeout: block.timestamp + 24 hours
@@ -159,13 +168,12 @@ contract FhenixBridge is
         inputAmountTransfer[id] = _encInputAmount;
         outputAmountTransfer[id] = _encOutputAmount;
 
-        emit IntentCreated(intent);
+        emit IntentCreated(_sender, _relayer, intent);
     }
 
     function fulfill(
         Intent memory intent,
-        InEuint128 calldata _outputAmount,
-        IFHERC20.FHERC20_EIP712_Permit calldata _permit
+        InEuint64 calldata _outputAmount
     ) public nonReentrant whenNotPaused {
         if (intent.relayer != msg.sender) {
             revert UnauthorizedRelayer();
@@ -179,28 +187,26 @@ contract FhenixBridge is
             revert IntentAlreadyFilled();
         }
 
-        euint128 encOutputAmount = FHE.asEuint128(_outputAmount);
+        euint64 encOutputAmount = FHE.asEuint64(_outputAmount);
 
         FHE.allow(encOutputAmount, intent.outputToken);
 
-        IFHERC20(intent.outputToken).encTransferFrom(
+        IFHERC20(intent.outputToken).confidentialTransferFrom(
             intent.relayer, // solver
             intent.receiver, // user's receiver address
-            encOutputAmount, // Use provided InEuint128 for transfer
-            _permit
+            encOutputAmount // Use provided InEuint64 for transfer
         );
 
         intents[intent.id] = intent;
         intents[intent.id].filledStatus = FilledStatus.FILLED;
         doesIntentExist[intent.id] = true;
 
-        emit IntentFulfilled(intent);
+        emit IntentFulfilled(intent.sender, intent.relayer, intent);
     }
 
     function fulfill(
         Intent memory intent,
-        euint128 _outputAmount,
-        IFHERC20.FHERC20_EIP712_Permit calldata _permit
+        euint64 _outputAmount
     ) public nonReentrant whenNotPaused {
         if (intent.relayer != msg.sender) {
             revert UnauthorizedRelayer();
@@ -217,18 +223,17 @@ contract FhenixBridge is
         FHE.allowTransient(_outputAmount, intent.relayer);
         FHE.allow(_outputAmount, intent.outputToken);
 
-        IFHERC20(intent.outputToken).encTransferFrom(
+        IFHERC20(intent.outputToken).confidentialTransferFrom(
             intent.relayer, // solver
             intent.receiver, // user's receiver address
-            _outputAmount, // Use provided InEuint128 for transfer
-            _permit
+            _outputAmount // Use provided InEuint64 for transfer
         );
 
         intents[intent.id] = intent;
         intents[intent.id].filledStatus = FilledStatus.FILLED;
         doesIntentExist[intent.id] = true;
 
-        emit IntentFulfilled(intent);
+        emit IntentFulfilled(intent.sender, intent.relayer, intent);
     }
 
     function repayRelayer(uint256 intentId) external onlyOwner nonReentrant {
@@ -242,13 +247,13 @@ contract FhenixBridge is
             revert SolverAlreadyPaid();
         }
 
-        IFHERC20(intent.inputToken).encTransfer(
+        IFHERC20(intent.inputToken).confidentialTransfer(
             intent.relayer,
             inputAmountTransfer[intentId]
         );
 
         intent.solverPaid = true;
-        emit IntentRepaid(intent);
+        emit IntentRepaid(intent.sender, intent.relayer, intent);
     }
 
     function claimTimeout(uint256 intentId) external nonReentrant {
@@ -266,25 +271,28 @@ contract FhenixBridge is
         require(!intent.solverPaid, "Solver already paid");
 
         // Transfer the input amount to the solver
-        IFHERC20(intent.inputToken).encTransfer(
+        IFHERC20(intent.inputToken).confidentialTransfer(
             intent.relayer,
             inputAmountTransfer[intentId]
         );
 
         intent.solverPaid = true;
-        emit IntentRepaid(intent);
+        emit IntentRepaid(intent.sender, intent.relayer, intent);
     }
 
     function withdraw(
         address tokenAddress,
-        InEuint128 calldata _encryptedAmount
+        InEuint64 calldata _encryptedAmount
     ) public onlyOwner nonReentrant {
         // Validate token address
         if (tokenAddress == address(0)) {
             revert InvalidToken();
         }
         // Transfer confidential tokens from contract to owner
-        IFHERC20(tokenAddress).encTransfer(msg.sender, _encryptedAmount);
+        IFHERC20(tokenAddress).confidentialTransfer(
+            msg.sender,
+            _encryptedAmount
+        );
     }
 
     function getIntent(uint256 intentId) external view returns (Intent memory) {
@@ -332,13 +340,13 @@ contract FhenixBridge is
         Intent storage intent = intents[intentId];
 
         if (fulfillmentVerified && !intent.solverPaid) {
-            IFHERC20(intent.inputToken).encTransfer(
+            IFHERC20(intent.inputToken).confidentialTransfer(
                 intent.relayer,
                 inputAmountTransfer[intentId]
             );
 
             intent.solverPaid = true;
-            emit IntentRepaid(intent);
+            emit IntentRepaid(intent.sender, intent.relayer, intent);
 
             return abi.encode("success");
         }

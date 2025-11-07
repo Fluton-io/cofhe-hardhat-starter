@@ -24,7 +24,7 @@ task("balanceOf", "Get user balance")
     }
 
     const tokenContract = (await ethers.getContractAt("eERC20", tokenaddress, signer)) as unknown as EERC20;
-    const encryptedBalance = await tokenContract.encBalanceOf(userAddress);
+    const encryptedBalance = await tokenContract.confidentialBalanceOf(userAddress);
     const indicatedBalance = await tokenContract.balanceOf(userAddress);
 
     console.log(
@@ -43,7 +43,7 @@ task("balanceOf", "Get user balance")
         environment: "TESTNET",
       })
     );
-    const unsealedBalance = await cofhe.expectResultSuccess(await cofhejs.unseal(encryptedBalance, FheTypes.Uint128));
+    const unsealedBalance = await cofhe.expectResultSuccess(await cofhejs.unseal(encryptedBalance, FheTypes.Uint64));
 
     console.log(
       `Unsealed Balance of ${userAddress} in token ${tokenaddress} on chain ${chainId} is`,

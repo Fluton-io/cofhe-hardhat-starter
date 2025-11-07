@@ -70,7 +70,6 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
         bridgeaddress,
         signer
       )) as unknown as FhenixBridge;
-      const tokenContract = (await ethers.getContractAt("eERC20", inputtokenaddress, signer)) as unknown as EERC20;
 
       await cofhe.expectResultSuccess(
         await cofhejs.initializeWithEthers({
@@ -81,20 +80,13 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
       );
 
       const encTransferResult = await cofhejs.encrypt([
-        Encryptable.uint128(inputamount),
-        Encryptable.uint128(outputamount),
+        Encryptable.uint64(inputamount),
+        Encryptable.uint64(outputamount),
+        Encryptable.uint32(destinationchainid),
       ] as const);
-      const [encTransferInput, encTransferOutput] = await hre.cofhe.expectResultSuccess(encTransferResult);
-
-      // permit creation
-      const encTransferCtHashWMetadata = appendMetadataToInput(encTransferInput);
-      const permit = await generateTransferFromPermit({
-        token: tokenContract,
-        signer,
-        owner: signer.address,
-        spender: bridgeaddress,
-        valueHash: encTransferCtHashWMetadata,
-      });
+      const [encTransferInput, encTransferOutput, encTransferDestination] = await hre.cofhe.expectResultSuccess(
+        encTransferResult
+      );
 
       const tx = await bridgeContract.bridge(
         signerAddress,
@@ -104,8 +96,7 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
         outputtokenaddress,
         encTransferInput,
         encTransferOutput,
-        destinationchainid,
-        permit
+        encTransferDestination
       );
 
       console.log(

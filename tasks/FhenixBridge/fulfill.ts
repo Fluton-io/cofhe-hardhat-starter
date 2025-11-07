@@ -1,8 +1,7 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
-import { EERC20, FhenixBridge } from "../../types";
-import { cofhejs, Encryptable, FheTypes } from "cofhejs/node";
-import { appendMetadataToInput, generateTransferFromPermit } from "../../utils";
+import { FhenixBridge } from "../../types";
+import { cofhejs, Encryptable } from "cofhejs/node";
 
 task("fulfill", "Fulfill the intent")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -11,7 +10,7 @@ task("fulfill", "Fulfill the intent")
   .setAction(async ({ signeraddress, bridgeaddress, tokenaddress }, hre) => {
     const { ethers, getChainId, deployments, getNamedAccounts, cofhe } = hre;
     const chainId = await getChainId();
-    const signerAddress = signeraddress || (await getNamedAccounts()).user;
+    const signerAddress = signeraddress || (await getNamedAccounts()).relayer;
     const signer = await ethers.getSigner(signerAddress);
 
     if (!bridgeaddress) {
@@ -29,7 +28,6 @@ task("fulfill", "Fulfill the intent")
       bridgeaddress,
       signer
     )) as unknown as FhenixBridge;
-    const tokenContract = (await ethers.getContractAt("eERC20", tokenaddress, signer)) as unknown as EERC20;
 
     await cofhe.expectResultSuccess(
       await cofhejs.initializeWithEthers({
@@ -39,43 +37,33 @@ task("fulfill", "Fulfill the intent")
       })
     );
 
-    const bridgeCtHash = 17376560294053597410165502690530354946667925495160395570320934095374872012201n;
+    const [encTransferInput] = await hre.cofhe.expectResultSuccess(
+      await cofhejs.encrypt([Encryptable.uint64(100000n)] as const)
+    );
 
-    // permit creation
-    const encTransferCtHashWMetadata = appendMetadataToInput({
-      ctHash: bridgeCtHash,
-      securityZone: 0,
-      utype: FheTypes.Uint128,
-    });
-    const permit = await generateTransferFromPermit({
-      token: tokenContract,
-      signer,
-      owner: signer.address,
-      spender: bridgeaddress,
-      valueHash: encTransferCtHashWMetadata,
-    });
+    const bridgeCtHash = 9524551590556872445629768055789978187614811716166253886930162958328290280704n;
 
     const intent = {
       sender: "0x9C3Ad2B5f00EC8e8564244EBa59692Dd5e57695b",
       receiver: "0x9C3Ad2B5f00EC8e8564244EBa59692Dd5e57695b",
       relayer: signer.address,
       inputToken: "0x353e69f463f78987917b5C2505eb7635B7200CFd",
-      outputToken: "0x2Ce559C8836C17F2aaDB3E6eE1f976C58114E95A",
-      inputAmount: 0n,
+      outputToken: "0xb5F8102CF5CFD8E9593F2b3c4Ed55C2D90FD36DF",
+      inputAmount: 76116566624115202630813867930347678809611165829529072392409309097160980694272n,
       outputAmount: bridgeCtHash,
-      id: "123",
-      originChainId: 421614,
-      destinationChainId: 11155111,
+      id: 4254351541969520240672908906812373447451030031104081795679195401304766009574n,
+      originChainId: 11155111,
+      destinationChainId: 21127701653695456104613444739534183004666464154949482736628618357727134024704n,
       filledStatus: 0n,
       solverPaid: false,
-      timeout: 0n,
+      timeout: 1762561260n,
     };
 
     // Wrapping tokens
     console.log(`Fulfilling intent on bridge ${bridgeaddress}...`);
     await bridgeContract[
-      "fulfill((address,address,address,address,address,uint256,uint256,uint256,uint32,uint32,uint8,bool,uint256),uint256,(address,address,uint256,uint256,uint8,bytes32,bytes32))"
-    ](intent, bridgeCtHash, permit);
+      "fulfill((address,address,address,address,address,uint256,uint256,uint256,uint32,uint256,uint8,bool,uint256),(uint256,uint8,uint8,bytes))"
+    ](intent, encTransferInput);
 
     console.log(`Intent fulfilled successfully. 🤌`);
   });

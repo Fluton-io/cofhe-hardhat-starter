@@ -31,7 +31,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     constructorArguments,
   };
 
-  console.info("\nSubmitting verification request on Arbiscan...");
+  console.info("\nSubmitting verification request on scanner...");
   await sleep(30000); // wait for arbiscan to index the contract
   await hre.run("verify:verify", verificationArgs);
 };
