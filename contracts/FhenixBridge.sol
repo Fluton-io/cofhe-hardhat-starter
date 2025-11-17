@@ -121,6 +121,11 @@ contract FhenixBridge is
         FHE.allow(encOutputAmount, _relayer);
         FHE.allow(destinationChainId, _relayer);
 
+        // Allow the sender to decrypt the amounts
+        FHE.allow(encInputAmount, _sender);
+        FHE.allow(encOutputAmount, _sender);
+        FHE.allow(destinationChainId, _sender);
+
         FHE.allow(encInputAmount, _inputToken);
 
         // Transfer input amount from user to bridge contract using permit
@@ -190,6 +195,8 @@ contract FhenixBridge is
         euint64 encOutputAmount = FHE.asEuint64(_outputAmount);
 
         FHE.allow(encOutputAmount, intent.outputToken);
+        FHE.allow(encOutputAmount, intent.relayer);
+        FHE.allow(encOutputAmount, intent.receiver);
 
         IFHERC20(intent.outputToken).confidentialTransferFrom(
             intent.relayer, // solver
