@@ -31,7 +31,7 @@ const addresses: { [key: number]: { [key: string]: string } } = {
     cAAVE: "0x94E16Df26a1DbEf5ab1113F35F511Ec96D8ca57a",
     eAAVE: "0x394e8D6FA146326334C623347F56d700d889fdae",
 
-    FhenixBridge: "0x27f418d8114AED5468bd37650772212E902a8757",
+    FhenixBridge: "0xdF2aCCdC66E9A6b3bC27bbf83842C54eAA2C8C49",
     FHEVMBridge: "0xc143234f3A4220b8Ee91131F903c370df2f39b95",
 
     AAVE_USDC: "0x2A04Ac6B4f270d2E1bAD133DB6248aE20f703Eef",
@@ -71,7 +71,7 @@ const addresses: { [key: number]: { [key: string]: string } } = {
     AAVE: "0x3fD7E42d9d5dE2153724740a5e9c70Bf8b89a0Fd",
     eAAVE: "0xBe0352Da14180b6062290eE161B5e56a96FE604B",
 
-    FhenixBridge: "0x06b431D0FaB55e78320a41c62552c3a2aa9335d3",
+    FhenixBridge: "0x0956bF2c80e3aa559805e953B6D737C02e864360",
   },
 };
 
