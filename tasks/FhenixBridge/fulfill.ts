@@ -14,13 +14,13 @@ task("fulfill", "Fulfill the intent")
     const signer = await ethers.getSigner(signerAddress);
 
     if (!bridgeaddress) {
-      const bridgeDeployment = await deployments.get("FhenixBridge");
-      bridgeaddress = bridgeDeployment.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
+      const bridgeDeployment = await deployments.getOrNull("FhenixBridge");
+      bridgeaddress = bridgeDeployment?.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
     }
 
     if (!tokenaddress) {
-      const tokenDeployment = await deployments.get("eERC20");
-      tokenaddress = tokenDeployment.address || addresses[+chainId].eUSDC; // Default to deployed
+      const tokenDeployment = await deployments.getOrNull("eERC20");
+      tokenaddress = tokenDeployment?.address || addresses[+chainId].eUSDC; // Default to deployed
     }
 
     const bridgeContract = (await ethers.getContractAt(

@@ -35,13 +35,13 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
       const signer = await ethers.getSigner(signerAddress);
 
       if (!inputtokenaddress) {
-        const tokenDeployment = await deployments.get("eERC20");
-        inputtokenaddress = tokenDeployment.address || addresses[+chainId].eUSDC; // Default to deployed
+        const tokenDeployment = await deployments.getOrNull("eERC20");
+        inputtokenaddress = tokenDeployment?.address || addresses[+chainId].eUSDC; // Default to deployed
       }
 
       if (!bridgeaddress) {
-        const bridgeDeployment = await deployments.get("FhenixBridge");
-        bridgeaddress = bridgeDeployment.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
+        const bridgeDeployment = await deployments.getOrNull("FhenixBridge");
+        bridgeaddress = bridgeDeployment?.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
       }
 
       if (!destinationchainid) {

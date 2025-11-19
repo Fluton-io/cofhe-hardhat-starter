@@ -19,8 +19,8 @@ task("encTransferFrom", "Transfer eERC20 tokens to another address")
     }
 
     if (!tokenaddress) {
-      const tokenDeployment = await deployments.get("eERC20");
-      tokenaddress = tokenDeployment.address || addresses[+chainId].eUSDC; // Default to deployed
+      const tokenDeployment = await deployments.getOrNull("eERC20");
+      tokenaddress = tokenDeployment?.address || addresses[+chainId].eUSDC; // Default to deployed
     }
 
     await cofhe.expectResultSuccess(

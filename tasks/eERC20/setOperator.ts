@@ -19,13 +19,13 @@ task("setOperator", "Set an operator for eERC20 tokens")
     const signer = await ethers.getSigner(signerAddress);
 
     if (!tokenaddress) {
-      const tokenDeployment = await deployments.get("eERC20");
-      tokenaddress = tokenDeployment.address || addresses[+chainId].eUSDC; // Default to deployed
+      const tokenDeployment = await deployments.getOrNull("eERC20");
+      tokenaddress = tokenDeployment?.address || addresses[+chainId].eUSDC; // Default to deployed
     }
 
     if (!spenderaddress) {
-      const bridgeDeployment = await deployments.get("FhenixBridge");
-      spenderaddress = bridgeDeployment.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
+      const bridgeDeployment = await deployments.getOrNull("FhenixBridge");
+      spenderaddress = bridgeDeployment?.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
     }
 
     const tokenContract = (await ethers.getContractAt("eERC20", tokenaddress, signer)) as unknown as EERC20;

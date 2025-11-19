@@ -1,6 +1,7 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
 import { EERC20 } from "../../types";
+import { MaxUint256 } from "ethers";
 
 task("wrap", "Wrap your erc20 into eERC20")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -18,8 +19,8 @@ task("wrap", "Wrap your erc20 into eERC20")
     }
 
     if (!tokenaddress) {
-      const tokenDeployment = await deployments.get("eERC20");
-      tokenaddress = tokenDeployment.address || addresses[+chainId].eUSDC; // Default to deployed
+      const tokenDeployment = await deployments.getOrNull("eERC20");
+      tokenaddress = tokenDeployment?.address || addresses[+chainId].eUSDC; // Default to deployed
     }
 
     // Approval check
@@ -30,7 +31,7 @@ task("wrap", "Wrap your erc20 into eERC20")
 
     if (allowance < amount) {
       console.log(`Approving ${amount} tokens for wrapping...`);
-      const approveTx = await tokenContract.approve(tokenaddress, amount);
+      const approveTx = await tokenContract.approve(tokenaddress, MaxUint256);
       await approveTx.wait();
       console.log(`Approved ${amount} tokens for wrapping.`);
     } else {
