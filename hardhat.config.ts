@@ -21,7 +21,7 @@ const FAUCET_PRIVATE_KEY = vars.get("FAUCET_PRIVATE_KEY");
 const accounts = [DEPLOYER_PRIVATE_KEY, USER_PRIVATE_KEY, RELAYER_PRIVATE_KEY, FAUCET_PRIVATE_KEY];
 
 const config: HardhatUserConfig = {
-  defaultNetwork: "arb-sepolia",
+  defaultNetwork: "base-sepolia",
   namedAccounts: {
     deployer: 0,
     user: 1,
@@ -60,6 +60,16 @@ const config: HardhatUserConfig = {
       timeout: 60000,
       httpHeaders: {},
     },
+
+    // Base Sepolia testnet configuration
+    "base-sepolia": {
+      url: `https://base-sepolia.infura.io/v3/${INFURA_API_KEY}`,
+      accounts,
+      chainId: 84532,
+      gasMultiplier: 1.2,
+      timeout: 60000,
+      httpHeaders: {},
+    },
   },
 
   // Etherscan verification config
@@ -72,6 +82,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.arbiscan.io/api",
           browserURL: "https://sepolia.arbiscan.io/",
+        },
+      },
+      {
+        network: "base-sepolia",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api-sepolia.basescan.io/api",
+          browserURL: "https://sepolia.basescan.io/",
         },
       },
     ],
