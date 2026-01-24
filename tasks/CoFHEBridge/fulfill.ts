@@ -1,6 +1,6 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
-import { FhenixBridge } from "../../types";
+import { CoFHEBridge } from "../../types";
 import { cofhejs, Encryptable } from "cofhejs/node";
 
 task("fulfill", "Fulfill the intent")
@@ -14,8 +14,8 @@ task("fulfill", "Fulfill the intent")
     const signer = await ethers.getSigner(signerAddress);
 
     if (!bridgeaddress) {
-      const bridgeDeployment = await deployments.getOrNull("FhenixBridge");
-      bridgeaddress = bridgeDeployment?.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
+      const bridgeDeployment = await deployments.getOrNull("CoFHEBridge");
+      bridgeaddress = bridgeDeployment?.address || addresses[+chainId].CoFHEBridge; // Default to deployed bridge address
     }
 
     if (!tokenaddress) {
@@ -23,11 +23,7 @@ task("fulfill", "Fulfill the intent")
       tokenaddress = tokenDeployment?.address || addresses[+chainId].eUSDC; // Default to deployed
     }
 
-    const bridgeContract = (await ethers.getContractAt(
-      "FhenixBridge",
-      bridgeaddress,
-      signer
-    )) as unknown as FhenixBridge;
+    const bridgeContract = (await ethers.getContractAt("CoFHEBridge", bridgeaddress, signer)) as unknown as CoFHEBridge;
 
     await cofhe.expectResultSuccess(
       await cofhejs.initializeWithEthers({

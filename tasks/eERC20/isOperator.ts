@@ -19,8 +19,8 @@ task("isOperator", "Check if an address is an operator for eERC20 tokens")
     }
 
     if (!spenderaddress) {
-      const bridgeDeployment = await deployments.getOrNull("FhenixBridge");
-      spenderaddress = bridgeDeployment?.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
+      const bridgeDeployment = await deployments.getOrNull("CoFHEBridge");
+      spenderaddress = bridgeDeployment?.address || addresses[+chainId].CoFHEBridge; // Default to deployed bridge address
     }
 
     if (!holderaddress) {

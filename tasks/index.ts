@@ -1,2 +1,2 @@
 import "./eERC20";
-import "./FhenixBridge";
+import "./CoFHEBridge";

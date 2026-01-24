@@ -43,6 +43,7 @@
     "ethers": "^6.4.0",
     "hardhat": "^2.26.0",
     "hardhat-gas-reporter": "^1.0.8",
+    "hardhat-switch-network": "^1.2.1",
     "solidity-coverage": "^0.8.0",
     "ts-node": ">=8.0.0",
     "typechain": "^8.3.0",
@@ -56,6 +57,8 @@
   },
   "dependencies": {
     "@fhenixprotocol/contracts": "^0.3.1",
+    "@layerzerolabs/lz-evm-protocol-v2": "^3.0.152",
+    "@layerzerolabs/oapp-evm": "^0.4.1",
     "fhenixjs": "^0.4.1",
     "hardhat-deploy": "^1.0.4"
   }

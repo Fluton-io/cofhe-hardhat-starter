@@ -5,12 +5,8 @@ import { cofhejs, Encryptable } from "cofhejs/node";
 async function main() {
   const [signer] = await ethers.getSigners();
 
-  const confidentialTokenAddress = ethers.getAddress(
-    "0x92B7BE7B0f31d912f46fCD77EEb585034dc64d14"
-  );
-  const bridgeAddress = ethers.getAddress(
-    "0x4aC1F5Fc409F794f12bE22d05f2EaBF650437979"
-  );
+  const confidentialTokenAddress = ethers.getAddress("0x92B7BE7B0f31d912f46fCD77EEb585034dc64d14");
+  const bridgeAddress = ethers.getAddress("0x4aC1F5Fc409F794f12bE22d05f2EaBF650437979");
 
   // Bridge parameters
   const sender = ethers.getAddress(signer.address);
@@ -18,9 +14,7 @@ async function main() {
   const relayer = ethers.getAddress(signer.address);
   const destinationChainId = 1; // Example destination chain
 
-  const provider = new ethers.JsonRpcProvider(
-    "https://arb-sepolia.g.alchemy.com/v2/X-DloxDnihx5D3j28oyshSC43tYk-3T_"
-  );
+  const provider = new ethers.JsonRpcProvider("https://arb-sepolia.g.alchemy.com/v2/X-DloxDnihx5D3j28oyshSC43tYk-3T_");
 
   // Initialize cofhejs
   const initResult = await cofhejs.initializeWithEthers({
@@ -38,13 +32,11 @@ async function main() {
     "contracts/ConfidentialERC20.sol:ConfidentialERC20",
     confidentialTokenAddress
   );
-  const bridge = await ethers.getContractAt("FhenixBridge", bridgeAddress);
+  const bridge = await ethers.getContractAt("CoFHEBridge", bridgeAddress);
 
   // Check initial balance
   const initialBalance = await confidentialToken.balanceOf(sender);
-  console.log(
-    `Initial balance: ${ethers.formatEther(initialBalance)} (indicated)`
-  );
+  console.log(`Initial balance: ${ethers.formatEther(initialBalance)} (indicated)`);
 
   // Amounts to bridge
   const inputAmount = ethers.parseEther("10");
@@ -52,27 +44,18 @@ async function main() {
 
   try {
     // Encrypt amounts
-    const encInputResult = await cofhejs.encrypt([
-      Encryptable.uint128(inputAmount),
-    ] as const);
-    const encOutputResult = await cofhejs.encrypt([
-      Encryptable.uint128(outputAmount),
-    ] as const);
+    const encInputResult = await cofhejs.encrypt([Encryptable.uint128(inputAmount)] as const);
+    const encOutputResult = await cofhejs.encrypt([Encryptable.uint128(outputAmount)] as const);
 
     if (!encInputResult.success || !encOutputResult.success) {
       console.error("Failed to encrypt amounts");
       return;
     }
 
-    const [encInputAmount] = await hre.cofhe.expectResultSuccess(
-      encInputResult
-    );
-    const [encOutputAmount] = await hre.cofhe.expectResultSuccess(
-      encOutputResult
-    );
+    const [encInputAmount] = await hre.cofhe.expectResultSuccess(encInputResult);
+    const [encOutputAmount] = await hre.cofhe.expectResultSuccess(encOutputResult);
 
-    const { name, version, chainId, verifyingContract } =
-      await confidentialToken.eip712Domain();
+    const { name, version, chainId, verifyingContract } = await confidentialToken.eip712Domain();
 
     const nonce = await confidentialToken.nonces(sender);
     const getNowTimestamp = () => BigInt(Date.now()) / 1000n;
@@ -136,11 +119,7 @@ async function main() {
     console.log("Transaction confirmed in block:", receipt?.blockNumber);
 
     // Get the intent ID from events
-    const events = await bridge.queryFilter(
-      bridge.filters.IntentCreated(),
-      receipt?.blockNumber,
-      receipt?.blockNumber
-    );
+    const events = await bridge.queryFilter(bridge.filters.IntentCreated(), receipt?.blockNumber, receipt?.blockNumber);
 
     if (events.length > 0) {
       const intentEvent = events[0];
@@ -153,14 +132,8 @@ async function main() {
 
     // Check balance after bridging
     const finalBalance = await confidentialToken.balanceOf(sender);
-    console.log(
-      `Final balance: ${ethers.formatEther(finalBalance)} (indicated)`
-    );
-    console.log(
-      `Balance change: ${ethers.formatEther(
-        finalBalance - initialBalance
-      )} (indicated)`
-    );
+    console.log(`Final balance: ${ethers.formatEther(finalBalance)} (indicated)`);
+    console.log(`Balance change: ${ethers.formatEther(finalBalance - initialBalance)} (indicated)`);
 
     console.log("\nBridge intent created successfully!");
   } catch (error: any) {

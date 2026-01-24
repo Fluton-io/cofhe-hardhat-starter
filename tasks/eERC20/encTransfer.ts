@@ -3,7 +3,7 @@ import addresses from "../../config/addresses";
 import { EERC20 } from "../../types";
 import { cofhejs, Encryptable } from "cofhejs/node";
 
-task("encTransferFrom", "Transfer eERC20 tokens to another address")
+task("encTransfer", "Transfer eERC20 tokens to another address")
   .addOptionalParam("signeraddress", "The address of the signer")
   .addOptionalParam("tokenaddress", "The address of the token contract")
   .addOptionalParam("to", "The address to send the wrapped tokens")
@@ -11,7 +11,7 @@ task("encTransferFrom", "Transfer eERC20 tokens to another address")
   .setAction(async ({ signeraddress, tokenaddress, to, amount }, hre) => {
     const { ethers, getChainId, deployments, getNamedAccounts, cofhe } = hre;
     const chainId = await getChainId();
-    const signerAddress = signeraddress || (await getNamedAccounts()).deployer;
+    const signerAddress = signeraddress || (await getNamedAccounts()).user;
     const signer = await ethers.getSigner(signerAddress);
 
     if (!to) {
@@ -44,8 +44,7 @@ task("encTransferFrom", "Transfer eERC20 tokens to another address")
     const eTokenContract = (await ethers.getContractAt("eERC20", tokenaddress, signer)) as unknown as EERC20;
 
     // Execute the transfer
-    const transferTx = await eTokenContract["confidentialTransferFrom(address,address,(uint256,uint8,uint8,bytes))"](
-      signer.address,
+    const transferTx = await eTokenContract["confidentialTransfer(address,(uint256,uint8,uint8,bytes))"](
       to,
       encTransferInput
     );

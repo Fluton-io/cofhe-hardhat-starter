@@ -3,6 +3,7 @@ import { vars } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-verify";
+import "hardhat-switch-network";
 import "cofhe-hardhat-plugin";
 import "hardhat-deploy";
 
@@ -21,7 +22,7 @@ const FAUCET_PRIVATE_KEY = vars.get("FAUCET_PRIVATE_KEY");
 const accounts = [DEPLOYER_PRIVATE_KEY, USER_PRIVATE_KEY, RELAYER_PRIVATE_KEY, FAUCET_PRIVATE_KEY];
 
 const config: HardhatUserConfig = {
-  defaultNetwork: "base-sepolia",
+  defaultNetwork: "arb-sepolia",
   namedAccounts: {
     deployer: 0,
     user: 1,

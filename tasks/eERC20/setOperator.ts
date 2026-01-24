@@ -15,7 +15,7 @@ task("setOperator", "Set an operator for eERC20 tokens")
   .setAction(async ({ signeraddress, tokenaddress, spenderaddress, timestamp }, hre) => {
     const { ethers, deployments, getChainId, getNamedAccounts } = hre;
     const chainId = await getChainId();
-    const signerAddress = signeraddress || (await getNamedAccounts()).user;
+    const signerAddress = signeraddress || (await getNamedAccounts()).relayer;
     const signer = await ethers.getSigner(signerAddress);
 
     if (!tokenaddress) {
@@ -24,8 +24,8 @@ task("setOperator", "Set an operator for eERC20 tokens")
     }
 
     if (!spenderaddress) {
-      const bridgeDeployment = await deployments.getOrNull("FhenixBridge");
-      spenderaddress = bridgeDeployment?.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
+      const bridgeDeployment = await deployments.getOrNull("CoFHEBridge");
+      spenderaddress = bridgeDeployment?.address || addresses[+chainId].CoFHEBridge; // Default to deployed bridge address
     }
 
     const tokenContract = (await ethers.getContractAt("eERC20", tokenaddress, signer)) as unknown as EERC20;

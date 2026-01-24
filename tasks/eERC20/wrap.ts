@@ -11,7 +11,7 @@ task("wrap", "Wrap your erc20 into eERC20")
   .setAction(async ({ signeraddress, tokenaddress, to, amount }, hre) => {
     const { ethers, getChainId, deployments, getNamedAccounts } = hre;
     const chainId = await getChainId();
-    const signerAddress = signeraddress || (await getNamedAccounts()).user;
+    const signerAddress = signeraddress || (await getNamedAccounts()).deployer;
     const signer = await ethers.getSigner(signerAddress);
 
     if (!to) {

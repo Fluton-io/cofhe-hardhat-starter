@@ -1,31 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.25;
 
-import "@openzeppelin/contracts/access/Ownable2Step.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import {OAppOptionsType3} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IFHERC20} from "./token/interfaces/IFHERC20.sol";
-
-// Union IBC packet structure
-struct IBCPacket {
-    uint32 sourceChannelId;
-    uint32 destinationChannelId;
-    bytes data;
-    uint64 timeoutHeight;
-    uint64 timeoutTimestamp;
-}
-
-// Interface for Union IBC Module to receive packets
-interface IIBCModuleRecv {
-    function onRecvPacket(
-        address caller,
-        IBCPacket calldata packet,
-        address relayer,
-        bytes calldata relayerMsg
-    ) external returns (bytes memory);
-}
 
 error MsgValueDoesNotMatchInputAmount();
 error UnauthorizedRelayer();
@@ -36,12 +20,19 @@ error InvalidAddress();
 error InvalidToken();
 error InvalidChainId();
 
-contract FhenixBridge is
-    Ownable2Step,
+contract CoFHEBridge is
+    Ownable,
     ReentrancyGuard,
     Pausable,
-    IIBCModuleRecv
+    OApp,
+    OAppOptionsType3
 {
+    /// @notice Msg type for sending a string, for use in OAppOptionsType3 as an enforced option
+    uint16 public constant SEND = 1;
+
+    uint256 public fee = 100; // 1%
+    address public feeReceiver = 0xBdc3f1A02e56CD349d10bA8D2B038F774ae22731;
+
     enum FilledStatus {
         NOT_FILLED,
         FILLED
@@ -69,7 +60,8 @@ contract FhenixBridge is
 
     mapping(uint256 intentId => Intent) public intents;
     mapping(uint256 intentId => bool exists) public doesIntentExist;
-    mapping(address => bool) public authorizedRelayers;
+
+    mapping(uint32 chainId => uint32 eid) public chainIdToEid;
 
     event IntentCreated(
         address indexed sender,
@@ -88,7 +80,26 @@ contract FhenixBridge is
     );
     event RelayerAuthorizationChanged(address indexed relayer, bool authorized);
 
-    constructor() Ownable(msg.sender) {}
+    constructor(
+        address _endpoint
+    ) OApp(_endpoint, msg.sender) Ownable(msg.sender) {}
+
+    function quote(
+        uint32 _dstEid,
+        string calldata _string,
+        bytes calldata _options,
+        bool _payInLzToken
+    ) public view returns (MessagingFee memory fee) {
+        bytes memory _message = abi.encode(_string);
+        // combineOptions (from OAppOptionsType3) merges enforced options set by the contract owner
+        // with any additional execution options provided by the caller
+        fee = _quote(
+            _dstEid,
+            _message,
+            combineOptions(_dstEid, SEND, _options),
+            _payInLzToken
+        );
+    }
 
     function bridge(
         address _sender,
@@ -125,6 +136,11 @@ contract FhenixBridge is
         FHE.allow(encInputAmount, _sender);
         FHE.allow(encOutputAmount, _sender);
         FHE.allow(destinationChainId, _sender);
+
+        // Allow the bridge contract to decrypt the input amount for transfer
+        FHE.allowThis(encInputAmount);
+        FHE.allowThis(encOutputAmount);
+        FHE.allowThis(destinationChainId);
 
         FHE.allow(encInputAmount, _inputToken);
 
@@ -178,43 +194,19 @@ contract FhenixBridge is
 
     function fulfill(
         Intent memory intent,
-        InEuint64 calldata _outputAmount
-    ) public nonReentrant whenNotPaused {
-        if (intent.relayer != msg.sender) {
-            revert UnauthorizedRelayer();
-        }
-
-        // Check if this intent already exists and is filled on THIS chain
-        if (
-            doesIntentExist[intent.id] &&
-            intents[intent.id].filledStatus == FilledStatus.FILLED
-        ) {
-            revert IntentAlreadyFilled();
-        }
-
+        InEuint64 calldata _outputAmount,
+        bytes memory _options
+    ) public payable whenNotPaused {
         euint64 encOutputAmount = FHE.asEuint64(_outputAmount);
 
-        FHE.allow(encOutputAmount, intent.outputToken);
-        FHE.allow(encOutputAmount, intent.relayer);
-        FHE.allow(encOutputAmount, intent.receiver);
-
-        IFHERC20(intent.outputToken).confidentialTransferFrom(
-            intent.relayer, // solver
-            intent.receiver, // user's receiver address
-            encOutputAmount // Use provided InEuint64 for transfer
-        );
-
-        intents[intent.id] = intent;
-        intents[intent.id].filledStatus = FilledStatus.FILLED;
-        doesIntentExist[intent.id] = true;
-
-        emit IntentFulfilled(intent.sender, intent.relayer, intent);
+        fulfill(intent, encOutputAmount, _options);
     }
 
     function fulfill(
         Intent memory intent,
-        euint64 _outputAmount
-    ) public nonReentrant whenNotPaused {
+        euint64 _outputAmount,
+        bytes memory _options
+    ) public payable whenNotPaused {
         if (intent.relayer != msg.sender) {
             revert UnauthorizedRelayer();
         }
@@ -240,10 +232,50 @@ contract FhenixBridge is
         intents[intent.id].filledStatus = FilledStatus.FILLED;
         doesIntentExist[intent.id] = true;
 
+        // Send message back to origin chain to pay the solver
+        uint32 _dstEid = chainIdToEid[intent.originChainId];
+        bytes memory _message = abi.encode(intent.id);
+
+        _lzSend(
+            _dstEid,
+            _message,
+            _options,
+            MessagingFee(msg.value, 0),
+            payable(msg.sender)
+        );
+
         emit IntentFulfilled(intent.sender, intent.relayer, intent);
     }
 
-    function repayRelayer(uint256 intentId) external onlyOwner nonReentrant {
+    function getIntent(uint256 intentId) external view returns (Intent memory) {
+        return intents[intentId];
+    }
+
+    // Emergency pause functions
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    function setChainIdToEid(uint32 _chainId, uint32 _eid) external onlyOwner {
+        if (_chainId == 0 || _eid == 0) {
+            revert InvalidChainId();
+        }
+        chainIdToEid[_chainId] = _eid;
+    }
+
+    function _lzReceive(
+        Origin calldata /*_origin*/,
+        bytes32 /*_guid*/,
+        bytes calldata _message,
+        address /*_executor*/,
+        bytes calldata /*_extraData*/
+    ) internal override {
+        uint256 intentId = abi.decode(_message, (uint256));
+
         if (!doesIntentExist[intentId]) {
             revert IntentNotFound();
         }
@@ -256,108 +288,10 @@ contract FhenixBridge is
 
         IFHERC20(intent.inputToken).confidentialTransfer(
             intent.relayer,
-            inputAmountTransfer[intentId]
+            intent.inputAmount
         );
 
         intent.solverPaid = true;
         emit IntentRepaid(intent.sender, intent.relayer, intent);
-    }
-
-    function claimTimeout(uint256 intentId) external nonReentrant {
-        if (!doesIntentExist[intentId]) {
-            revert IntentNotFound();
-        }
-
-        Intent storage intent = intents[intentId];
-
-        require(
-            msg.sender == intent.relayer,
-            "Only designated solver can claim"
-        );
-        require(block.timestamp > intent.timeout, "Timeout not reached");
-        require(!intent.solverPaid, "Solver already paid");
-
-        // Transfer the input amount to the solver
-        IFHERC20(intent.inputToken).confidentialTransfer(
-            intent.relayer,
-            inputAmountTransfer[intentId]
-        );
-
-        intent.solverPaid = true;
-        emit IntentRepaid(intent.sender, intent.relayer, intent);
-    }
-
-    function withdraw(
-        address tokenAddress,
-        InEuint64 calldata _encryptedAmount
-    ) public onlyOwner nonReentrant {
-        // Validate token address
-        if (tokenAddress == address(0)) {
-            revert InvalidToken();
-        }
-        // Transfer confidential tokens from contract to owner
-        IFHERC20(tokenAddress).confidentialTransfer(
-            msg.sender,
-            _encryptedAmount
-        );
-    }
-
-    function getIntent(uint256 intentId) external view returns (Intent memory) {
-        return intents[intentId];
-    }
-
-    function setRelayerAuthorization(
-        address relayer,
-        bool authorized
-    ) external onlyOwner {
-        if (relayer == address(0)) {
-            revert InvalidAddress();
-        }
-        authorizedRelayers[relayer] = authorized;
-        emit RelayerAuthorizationChanged(relayer, authorized);
-    }
-
-    // Emergency pause functions
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
-    // Union IBC callback - called by Union relayers after cross-chain fulfillment verification
-    function onRecvPacket(
-        address /*caller*/,
-        IBCPacket calldata packet,
-        address /*relayer*/,
-        bytes calldata /*relayerMsg*/
-    ) external override returns (bytes memory) {
-        require(authorizedRelayers[msg.sender], "Unauthorized relayer");
-
-        (uint256 intentId, bool fulfillmentVerified) = abi.decode(
-            packet.data,
-            (uint256, bool)
-        );
-
-        if (!doesIntentExist[intentId]) {
-            revert IntentNotFound();
-        }
-
-        Intent storage intent = intents[intentId];
-
-        if (fulfillmentVerified && !intent.solverPaid) {
-            IFHERC20(intent.inputToken).confidentialTransfer(
-                intent.relayer,
-                inputAmountTransfer[intentId]
-            );
-
-            intent.solverPaid = true;
-            emit IntentRepaid(intent.sender, intent.relayer, intent);
-
-            return abi.encode("success");
-        }
-
-        return abi.encode("failed");
     }
 }

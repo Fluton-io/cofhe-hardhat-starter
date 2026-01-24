@@ -1,8 +1,7 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
-import { EERC20, FhenixBridge } from "../../types";
+import { CoFHEBridge } from "../../types";
 import { cofhejs, Encryptable } from "cofhejs/node";
-import { generateTransferFromPermit, appendMetadataToInput } from "../../utils";
 
 task("bridge", "Bridge eERC20 tokens to FHEVM")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -40,8 +39,8 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
       }
 
       if (!bridgeaddress) {
-        const bridgeDeployment = await deployments.getOrNull("FhenixBridge");
-        bridgeaddress = bridgeDeployment?.address || addresses[+chainId].FhenixBridge; // Default to deployed bridge address
+        const bridgeDeployment = await deployments.getOrNull("CoFHEBridge");
+        bridgeaddress = bridgeDeployment?.address || addresses[+chainId].CoFHEBridge; // Default to deployed bridge address
       }
 
       if (!destinationchainid) {
@@ -66,10 +65,10 @@ task("bridge", "Bridge eERC20 tokens to FHEVM")
       }
 
       const bridgeContract = (await ethers.getContractAt(
-        "FhenixBridge",
+        "CoFHEBridge",
         bridgeaddress,
         signer
-      )) as unknown as FhenixBridge;
+      )) as unknown as CoFHEBridge;
 
       await cofhe.expectResultSuccess(
         await cofhejs.initializeWithEthers({
