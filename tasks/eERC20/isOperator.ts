@@ -6,7 +6,7 @@ task("isOperator", "Check if an address is an operator for eERC20 tokens")
   .addOptionalParam("signeraddress", "The address of the signer")
   .addOptionalParam("tokenaddress", "The address of the token contract")
   .addOptionalParam("holderaddress", "The address of the holder")
-  .addOptionalParam("spenderaddress", "The address of the spender.")
+  .addParam("spenderaddress", "The address of the spender.")
   .setAction(async ({ signeraddress, tokenaddress, holderaddress, spenderaddress }, hre) => {
     const { ethers, deployments, getChainId, getNamedAccounts } = hre;
     const chainId = await getChainId();
@@ -16,11 +16,6 @@ task("isOperator", "Check if an address is an operator for eERC20 tokens")
     if (!tokenaddress) {
       const tokenDeployment = await deployments.getOrNull("eERC20");
       tokenaddress = tokenDeployment?.address || addresses[+chainId].eUSDC; // Default to deployed
-    }
-
-    if (!spenderaddress) {
-      const bridgeDeployment = await deployments.getOrNull("CoFHEBridge");
-      spenderaddress = bridgeDeployment?.address || addresses[+chainId].CoFHEBridge; // Default to deployed bridge address
     }
 
     if (!holderaddress) {

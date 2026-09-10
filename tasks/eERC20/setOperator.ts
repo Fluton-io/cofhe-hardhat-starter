@@ -5,7 +5,7 @@ import addresses from "../../config/addresses";
 task("setOperator", "Set an operator for eERC20 tokens")
   .addOptionalParam("signeraddress", "The address of the signer")
   .addOptionalParam("tokenaddress", "The address of the token contract")
-  .addOptionalParam("spenderaddress", "The address of the spender.")
+  .addParam("spenderaddress", "The address of the spender.")
   .addOptionalParam(
     "timestamp",
     "The timestamp for the operator",
@@ -21,11 +21,6 @@ task("setOperator", "Set an operator for eERC20 tokens")
     if (!tokenaddress) {
       const tokenDeployment = await deployments.getOrNull("eERC20");
       tokenaddress = tokenDeployment?.address || addresses[+chainId].eUSDC; // Default to deployed
-    }
-
-    if (!spenderaddress) {
-      const bridgeDeployment = await deployments.getOrNull("CoFHEBridge");
-      spenderaddress = bridgeDeployment?.address || addresses[+chainId].CoFHEBridge; // Default to deployed bridge address
     }
 
     const tokenContract = (await ethers.getContractAt("eERC20", tokenaddress, signer)) as unknown as EERC20;
