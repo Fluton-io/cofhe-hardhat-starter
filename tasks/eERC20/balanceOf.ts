@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
 import { EERC20 } from "../../types";
-import { cofhejs, FheTypes } from "cofhejs/node";
+import { FheTypes } from "@cofhe/sdk";
 
 task("balanceOf", "Get user balance")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -36,14 +36,9 @@ task("balanceOf", "Get user balance")
       indicatedBalance.toString()
     );
 
-    await cofhe.expectResultSuccess(
-      await cofhejs.initializeWithEthers({
-        ethersProvider: ethers.provider,
-        ethersSigner: signer,
-        environment: "TESTNET",
-      })
-    );
-    const unsealedBalance = await cofhe.expectResultSuccess(await cofhejs.unseal(encryptedBalance, FheTypes.Uint64));
+    const client = await cofhe.createClientWithBatteries(signer);
+
+    const unsealedBalance = await client.decryptForView(encryptedBalance, FheTypes.Uint64).withACP().execute();
 
     console.log(
       `Unsealed Balance of ${userAddress} in token ${tokenaddress} on chain ${chainId} is`,

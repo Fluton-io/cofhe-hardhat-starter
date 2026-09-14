@@ -5,7 +5,7 @@ pragma solidity ^0.8.25;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {euint64, InEuint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {euint64, externalEuint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -185,17 +185,18 @@ interface IFHERC20 is IERC20, IERC20Metadata {
     /**
      * @dev See {IERC20-transfer}.
      *
-     * Intended to be used as a EOA call with an encrypted input `InEuint64 inValue`.
+     * Intended to be used as a EOA call with an encrypted input `externalEuint64 inValue`.
      *
      * Requirements:
      *
      * - `to` cannot be the zero address.
      * - the caller must have a balance of at least `value`.
-     * - `inValue` must be a `InEuint164` to preserve confidentiality.
+     * - `inValue` must be a `externalEuint64` to preserve confidentiality.
      */
     function confidentialTransfer(
         address to,
-        InEuint64 memory inValue
+        externalEuint64 inValue,
+        bytes calldata inputProof
     ) external returns (euint64 transferred);
 
     /**
@@ -228,7 +229,8 @@ interface IFHERC20 is IERC20, IERC20Metadata {
     function confidentialTransferFrom(
         address from,
         address to,
-        InEuint64 memory inValues
+        externalEuint64 inValues,
+        bytes calldata inputProof
     ) external returns (euint64 transferred);
 
     function confidentialTransferFrom(
@@ -239,7 +241,8 @@ interface IFHERC20 is IERC20, IERC20Metadata {
 
     function confidentialTransferAndCall(
         address to,
-        InEuint64 memory inValue,
+        externalEuint64 inValue,
+        bytes calldata inputProof,
         bytes calldata data
     ) external returns (euint64 transferred);
 
@@ -252,7 +255,8 @@ interface IFHERC20 is IERC20, IERC20Metadata {
     function confidentialTransferFromAndCall(
         address from,
         address to,
-        InEuint64 memory inValue,
+        externalEuint64 inValue,
+        bytes calldata inputProof,
         bytes calldata data
     ) external returns (euint64 transferred);
 

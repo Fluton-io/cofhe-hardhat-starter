@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
 import { EERC20 } from "../../types";
-import { cofhejs, Encryptable } from "cofhejs/node";
+import { Encryptable } from "@cofhe/sdk";
 
 task("encTransfer", "Transfer eERC20 tokens to another address")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -23,31 +23,17 @@ task("encTransfer", "Transfer eERC20 tokens to another address")
       tokenaddress = tokenDeployment?.address || addresses[+chainId].eUSDC; // Default to deployed
     }
 
-    await cofhe.expectResultSuccess(
-      await cofhejs.initializeWithEthers({
-        ethersProvider: ethers.provider,
-        ethersSigner: signer,
-        environment: "TESTNET",
-      })
-    );
+    const client = await cofhe.createClientWithBatteries(signer);
 
-    const encTransferResult = await cofhejs.encrypt([Encryptable.uint64(amount)] as const);
+    const [amountHash, proof] = await client
+      .encryptInputs([Encryptable.uint64(amount)])
+      .setConsumingContract(tokenaddress)
+      .execute();
 
-    if (!encTransferResult.success) {
-      console.error("Failed to encrypt transfer amount:", encTransferResult.error);
-      return;
-    }
-
-    const [encTransferInput] = await hre.cofhe.expectResultSuccess(encTransferResult);
-
-    // Generate permit
     const eTokenContract = (await ethers.getContractAt("eERC20", tokenaddress, signer)) as unknown as EERC20;
 
     // Execute the transfer
-    const transferTx = await eTokenContract["confidentialTransfer(address,(uint256,uint8,uint8,bytes))"](
-      to,
-      encTransferInput
-    );
+    const transferTx = await eTokenContract["confidentialTransfer(address,bytes32,bytes)"](to, amountHash, proof);
 
     console.log(`Transaction: ${transferTx.hash}`);
   });

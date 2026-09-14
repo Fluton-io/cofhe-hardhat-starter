@@ -53,7 +53,7 @@ interface IFHERC20Errors is IERC20Errors {
     );
 
     /**
-     * @dev ConfidentialTransferFrom `value` greater than `permit.value_hash` dont match (permit doesn't match InEuint64)
+     * @dev ConfidentialTransferFrom `value` greater than `permit.value_hash` dont match (permit doesn't match externalEuint64)
      * @param inValueHash ConfidentialTransferFrom param inValue.ctHash.
      * @param permitValueHash token amount hash included in FHERC20_EIP712_Permit struct.
      */
