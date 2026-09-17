@@ -26,12 +26,17 @@ task("wrap", "Wrap your erc20 into eERC20")
     // Approval check
     const eTokenContract = (await ethers.getContractAt("eERC20", tokenaddress, signer)) as unknown as EERC20;
     const tokenAddress = await eTokenContract.erc20();
-    const tokenContract = await ethers.getContractAt("IERC20", tokenAddress, signer);
+    const tokenContract = await ethers.getContractAt(
+      "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20",
+      tokenAddress,
+      signer,
+    );
     const allowance = await tokenContract.allowance(signer.address, tokenaddress);
 
     if (allowance < amount) {
       console.log(`Approving ${amount} tokens for wrapping...`);
       const approveTx = await tokenContract.approve(tokenaddress, MaxUint256);
+      console.log(`approve tx: ${approveTx.hash}`);
       await approveTx.wait();
       console.log(`Approved ${amount} tokens for wrapping.`);
     } else {
@@ -40,7 +45,9 @@ task("wrap", "Wrap your erc20 into eERC20")
 
     // Wrapping tokens
     console.log(`Wrapping ${amount} tokens from ${signer.address} to ${to} in token ${tokenaddress}`);
-    await eTokenContract.wrap(to, amount);
+    const wrapTx = await eTokenContract.wrap(to, amount);
+    console.log(`wrap tx: ${wrapTx.hash}`);
+    await wrapTx.wait();
 
     console.log(`Wrapped ${amount} of tokens from ${signer.address} to ${to} in token ${tokenaddress}`);
   });

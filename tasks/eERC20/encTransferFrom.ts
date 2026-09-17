@@ -2,6 +2,7 @@ import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
 import { EERC20 } from "../../types";
 import { Encryptable } from "@cofhe/sdk";
+import { getCofheClient } from "../../utils/cofheClient";
 
 task("encTransferFrom", "Transfer eERC20 tokens to another address")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -9,7 +10,7 @@ task("encTransferFrom", "Transfer eERC20 tokens to another address")
   .addOptionalParam("to", "The address to send the wrapped tokens")
   .addOptionalParam("amount", "The amount of tokens to transfer", "1000000")
   .setAction(async ({ signeraddress, tokenaddress, to, amount }, hre) => {
-    const { ethers, getChainId, deployments, getNamedAccounts, cofhe } = hre;
+    const { ethers, getChainId, deployments, getNamedAccounts } = hre;
     const chainId = await getChainId();
     const signerAddress = signeraddress || (await getNamedAccounts()).deployer;
     const signer = await ethers.getSigner(signerAddress);
@@ -23,7 +24,7 @@ task("encTransferFrom", "Transfer eERC20 tokens to another address")
       tokenaddress = tokenDeployment?.address || addresses[+chainId].eUSDC; // Default to deployed
     }
 
-    const client = await cofhe.createClientWithBatteries(signer);
+    const client = await getCofheClient(hre, signer);
 
     const [amountHash, proof] = await client
       .encryptInputs([Encryptable.uint64(amount)])

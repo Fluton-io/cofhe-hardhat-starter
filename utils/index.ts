@@ -14,3 +14,13 @@ export const resolveAddressChainId = async (hre: HardhatRuntimeEnvironment): Pro
   if (process.env.ADDRESS_CHAIN_ID) return +process.env.ADDRESS_CHAIN_ID;
   return +(await hre.getChainId());
 };
+
+/**
+ * A `fromBlock` for `queryFilter` that stays within RPC providers' `eth_getLogs`
+ * range caps (e.g. Infura's 10,000 block limit), instead of the default of
+ * scanning from genesis.
+ */
+export const recentFromBlock = async (hre: HardhatRuntimeEnvironment, lookback = 9000): Promise<number> => {
+  const latest = await hre.ethers.provider.getBlockNumber();
+  return Math.max(0, latest - lookback);
+};

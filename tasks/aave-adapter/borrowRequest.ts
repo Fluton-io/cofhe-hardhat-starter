@@ -1,6 +1,8 @@
 import { task, types } from "hardhat/config";
 import addresses from "../../config/addresses";
 import { Encryptable } from "@cofhe/sdk";
+import { getCofheClient } from "../../utils/cofheClient";
+import { recentFromBlock } from "../../utils";
 
 task("aaveBorrowRequest", "Submit a confidential borrow request to the Aave adapter")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -10,7 +12,7 @@ task("aaveBorrowRequest", "Submit a confidential borrow request to the Aave adap
   .addOptionalParam("interestratemode", "Aave interest rate mode (2 = variable)", 2, types.int)
   .addOptionalParam("referralcode", "Aave referral code", 0, types.int)
   .setAction(async ({ signeraddress, diamondaddress, asset, amount, interestratemode, referralcode }, hre) => {
-    const { ethers, getChainId, deployments, getNamedAccounts, cofhe } = hre;
+    const { ethers, getChainId, deployments, getNamedAccounts } = hre;
     const chainId = await getChainId();
     const signerAddress = signeraddress || (await getNamedAccounts()).user;
     const signer = await ethers.getSigner(signerAddress);
@@ -22,7 +24,7 @@ task("aaveBorrowRequest", "Submit a confidential borrow request to the Aave adap
       asset = addresses[+chainId].AAVE_USDC;
     }
 
-    const client = await cofhe.createClientWithBatteries(signer);
+    const client = await getCofheClient(hre, signer);
 
     const [amountHash, proof] = await client
       .encryptInputs([Encryptable.uint64(amount)])
@@ -42,7 +44,7 @@ task("aaveBorrowFinalize", "Finalize a borrow batch: verify the total, borrow fr
   .addOptionalParam("diamondaddress", "Diamond contract address")
   .addParam("batchid", "The batch id to finalize", undefined, types.string)
   .setAction(async ({ signeraddress, diamondaddress, batchid }, hre) => {
-    const { ethers, deployments, getNamedAccounts, cofhe } = hre;
+    const { ethers, deployments, getNamedAccounts } = hre;
     const signerAddress = signeraddress || (await getNamedAccounts()).relayer;
     const signer = await ethers.getSigner(signerAddress);
 
@@ -52,13 +54,16 @@ task("aaveBorrowFinalize", "Finalize a borrow batch: verify the total, borrow fr
 
     const borrowFacet = await ethers.getContractAt("BorrowFacet", diamondaddress, signer);
 
-    const events = await borrowFacet.queryFilter(borrowFacet.filters.BorrowBatchFormed(undefined, batchid));
+    const events = await borrowFacet.queryFilter(
+      borrowFacet.filters.BorrowBatchFormed(undefined, batchid),
+      await recentFromBlock(hre),
+    );
     if (events.length === 0) {
       throw new Error(`No BorrowBatchFormed event found for batch ${batchid}`);
     }
     const ctHash = events[0].args.ctHash;
 
-    const client = await cofhe.createClientWithBatteries(signer);
+    const client = await getCofheClient(hre, signer);
     const { decryptedValue, signature } = await client.decryptForTx(ctHash).withoutACP().execute();
 
     const tx = await borrowFacet.finalizeBorrowRequests(batchid, decryptedValue, signature);

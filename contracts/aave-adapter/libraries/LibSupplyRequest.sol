@@ -103,7 +103,7 @@ library LibSupplyRequest {
         s.aavePool.supply(asset, amount, address(this), requests[0].referralCode);
 
         uint256 afterScaledBalance = IScaledBalanceToken(aToken).scaledBalanceOf(address(this));
-        uint256 multiplier = (afterScaledBalance - beforeScaledBalance) / (amount / (10 ** 6));
+        uint256 multiplier = ((afterScaledBalance - beforeScaledBalance) * (10 ** 6)) / amount;
 
         _applySupplyToUsers(s, requests, multiplier, asset);
 

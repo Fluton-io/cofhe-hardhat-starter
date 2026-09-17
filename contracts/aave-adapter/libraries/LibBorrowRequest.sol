@@ -99,7 +99,7 @@ library LibBorrowRequest {
         s.aavePool.borrow(asset, amountToBorrow, uint256(interestRateMode), requests[0].referralCode, address(this));
 
         uint256 afterScaledDebt = IScaledBalanceToken(debtToken).scaledBalanceOf(address(this));
-        uint256 multiplier = (afterScaledDebt - beforeScaledDebt) / (amountToBorrow / (10 ** 6));
+        uint256 multiplier = ((afterScaledDebt - beforeScaledDebt) * (10 ** 6)) / amountToBorrow;
 
         IERC20(asset).approve(cToken, amountToBorrow);
         FHERC20Wrapper(cToken).wrap(address(this), amountToBorrow);

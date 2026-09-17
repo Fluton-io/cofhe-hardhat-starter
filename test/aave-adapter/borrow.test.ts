@@ -113,7 +113,7 @@ describe("Aave adapter - Borrow (Sepolia fork)", function () {
       diamondAddress,
     )) as bigint;
     const borrowMultiplier =
-      (debtAfter - debtBefore) / (borrowAmount / 1_000_000n);
+      ((debtAfter - debtBefore) * 1_000_000n) / borrowAmount;
     const expectedScaledDebt = (borrowAmount * borrowMultiplier) / 1_000_000n;
 
     const eaUSDT = await ethers.getContractAt(

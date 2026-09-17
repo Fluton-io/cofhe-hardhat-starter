@@ -1,6 +1,8 @@
 import { task, types } from "hardhat/config";
 import addresses from "../../config/addresses";
 import { Encryptable } from "@cofhe/sdk";
+import { getCofheClient } from "../../utils/cofheClient";
+import { recentFromBlock } from "../../utils";
 
 task("aaveRepayRequest", "Submit a confidential repay request to the Aave adapter")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -9,7 +11,7 @@ task("aaveRepayRequest", "Submit a confidential repay request to the Aave adapte
   .addOptionalParam("amount", "The amount to repay, in cToken decimals", "1000000")
   .addOptionalParam("interestratemode", "Aave interest rate mode (2 = variable)", 2, types.int)
   .setAction(async ({ signeraddress, diamondaddress, asset, amount, interestratemode }, hre) => {
-    const { ethers, getChainId, deployments, getNamedAccounts, cofhe } = hre;
+    const { ethers, getChainId, deployments, getNamedAccounts } = hre;
     const chainId = await getChainId();
     const signerAddress = signeraddress || (await getNamedAccounts()).user;
     const signer = await ethers.getSigner(signerAddress);
@@ -21,7 +23,7 @@ task("aaveRepayRequest", "Submit a confidential repay request to the Aave adapte
       asset = addresses[+chainId].AAVE_USDC;
     }
 
-    const client = await cofhe.createClientWithBatteries(signer);
+    const client = await getCofheClient(hre, signer);
 
     const [amountHash, proof] = await client
       .encryptInputs([Encryptable.uint64(amount)])
@@ -41,7 +43,7 @@ task("aaveRepayUnwrap", "First finalize step for a repay batch: verify + unwrap 
   .addOptionalParam("diamondaddress", "Diamond contract address")
   .addParam("batchid", "The batch id to unwrap", undefined, types.string)
   .setAction(async ({ signeraddress, diamondaddress, batchid }, hre) => {
-    const { ethers, deployments, getNamedAccounts, cofhe } = hre;
+    const { ethers, deployments, getNamedAccounts } = hre;
     const signerAddress = signeraddress || (await getNamedAccounts()).relayer;
     const signer = await ethers.getSigner(signerAddress);
 
@@ -51,13 +53,16 @@ task("aaveRepayUnwrap", "First finalize step for a repay batch: verify + unwrap 
 
     const repayFacet = await ethers.getContractAt("RepayFacet", diamondaddress, signer);
 
-    const events = await repayFacet.queryFilter(repayFacet.filters.RepayBatchFormed(undefined, batchid));
+    const events = await repayFacet.queryFilter(
+      repayFacet.filters.RepayBatchFormed(undefined, batchid),
+      await recentFromBlock(hre),
+    );
     if (events.length === 0) {
       throw new Error(`No RepayBatchFormed event found for batch ${batchid}`);
     }
     const ctHash = events[0].args.ctHash;
 
-    const client = await cofhe.createClientWithBatteries(signer);
+    const client = await getCofheClient(hre, signer);
     const { decryptedValue, signature } = await client.decryptForTx(ctHash).withoutACP().execute();
 
     const tx = await repayFacet.unwrapRepayForFinalize(batchid, decryptedValue, signature);
@@ -71,7 +76,7 @@ task("aaveRepayFinalize", "Second finalize step for a repay batch: settle the un
   .addOptionalParam("diamondaddress", "Diamond contract address")
   .addParam("batchid", "The batch id to finalize", undefined, types.string)
   .setAction(async ({ signeraddress, diamondaddress, batchid }, hre) => {
-    const { ethers, deployments, getNamedAccounts, cofhe } = hre;
+    const { ethers, deployments, getNamedAccounts } = hre;
     const signerAddress = signeraddress || (await getNamedAccounts()).relayer;
     const signer = await ethers.getSigner(signerAddress);
 
@@ -81,13 +86,16 @@ task("aaveRepayFinalize", "Second finalize step for a repay batch: settle the un
 
     const repayFacet = await ethers.getContractAt("RepayFacet", diamondaddress, signer);
 
-    const events = await repayFacet.queryFilter(repayFacet.filters.RepayUnwrapped(batchid));
+    const events = await repayFacet.queryFilter(
+      repayFacet.filters.RepayUnwrapped(batchid),
+      await recentFromBlock(hre),
+    );
     if (events.length === 0) {
       throw new Error(`No RepayUnwrapped event found for batch ${batchid} - run aaveRepayUnwrap first`);
     }
     const unwrapCtHash = events[0].args.unwrapCtHash;
 
-    const client = await cofhe.createClientWithBatteries(signer);
+    const client = await getCofheClient(hre, signer);
     const { decryptedValue, signature } = await client.decryptForTx(unwrapCtHash).withoutACP().execute();
 
     const tx = await repayFacet.finalizeRepayRequests(batchid, decryptedValue, signature);

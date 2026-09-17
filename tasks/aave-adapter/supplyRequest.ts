@@ -1,6 +1,8 @@
 import { task, types } from "hardhat/config";
 import addresses from "../../config/addresses";
 import { Encryptable } from "@cofhe/sdk";
+import { getCofheClient } from "../../utils/cofheClient";
+import { recentFromBlock } from "../../utils";
 
 task("aaveSupplyRequest", "Submit a confidential supply request to the Aave adapter")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -9,7 +11,7 @@ task("aaveSupplyRequest", "Submit a confidential supply request to the Aave adap
   .addOptionalParam("amount", "The amount to supply, in cToken decimals", "1000000")
   .addOptionalParam("referralcode", "Aave referral code", 0, types.int)
   .setAction(async ({ signeraddress, diamondaddress, asset, amount, referralcode }, hre) => {
-    const { ethers, getChainId, deployments, getNamedAccounts, cofhe } = hre;
+    const { ethers, getChainId, deployments, getNamedAccounts } = hre;
     const chainId = await getChainId();
     const signerAddress = signeraddress || (await getNamedAccounts()).user;
     const signer = await ethers.getSigner(signerAddress);
@@ -21,7 +23,7 @@ task("aaveSupplyRequest", "Submit a confidential supply request to the Aave adap
       asset = addresses[+chainId].AAVE_USDC;
     }
 
-    const client = await cofhe.createClientWithBatteries(signer);
+    const client = await getCofheClient(hre, signer);
 
     const [amountHash, proof] = await client
       .encryptInputs([Encryptable.uint64(amount)])
@@ -41,7 +43,7 @@ task("aaveSupplyUnwrap", "First finalize step for a supply batch: verify + unwra
   .addOptionalParam("diamondaddress", "Diamond contract address")
   .addParam("batchid", "The batch id to unwrap", undefined, types.string)
   .setAction(async ({ signeraddress, diamondaddress, batchid }, hre) => {
-    const { ethers, deployments, getNamedAccounts, cofhe } = hre;
+    const { ethers, deployments, getNamedAccounts } = hre;
     const signerAddress = signeraddress || (await getNamedAccounts()).relayer;
     const signer = await ethers.getSigner(signerAddress);
 
@@ -51,13 +53,16 @@ task("aaveSupplyUnwrap", "First finalize step for a supply batch: verify + unwra
 
     const supplyFacet = await ethers.getContractAt("SupplyFacet", diamondaddress, signer);
 
-    const events = await supplyFacet.queryFilter(supplyFacet.filters.SupplyBatchFormed(undefined, batchid));
+    const events = await supplyFacet.queryFilter(
+      supplyFacet.filters.SupplyBatchFormed(undefined, batchid),
+      await recentFromBlock(hre),
+    );
     if (events.length === 0) {
       throw new Error(`No SupplyBatchFormed event found for batch ${batchid}`);
     }
     const ctHash = events[0].args.ctHash;
 
-    const client = await cofhe.createClientWithBatteries(signer);
+    const client = await getCofheClient(hre, signer);
     const { decryptedValue, signature } = await client.decryptForTx(ctHash).withoutACP().execute();
 
     const tx = await supplyFacet.unwrapSupplyForFinalize(batchid, decryptedValue, signature);
@@ -71,7 +76,7 @@ task("aaveSupplyFinalize", "Second finalize step for a supply batch: settle the 
   .addOptionalParam("diamondaddress", "Diamond contract address")
   .addParam("batchid", "The batch id to finalize", undefined, types.string)
   .setAction(async ({ signeraddress, diamondaddress, batchid }, hre) => {
-    const { ethers, deployments, getNamedAccounts, cofhe } = hre;
+    const { ethers, deployments, getNamedAccounts } = hre;
     const signerAddress = signeraddress || (await getNamedAccounts()).relayer;
     const signer = await ethers.getSigner(signerAddress);
 
@@ -81,13 +86,13 @@ task("aaveSupplyFinalize", "Second finalize step for a supply batch: settle the 
 
     const supplyFacet = await ethers.getContractAt("SupplyFacet", diamondaddress, signer);
 
-    const events = await supplyFacet.queryFilter(supplyFacet.filters.SupplyUnwrapped(batchid));
+    const events = await supplyFacet.queryFilter(supplyFacet.filters.SupplyUnwrapped(batchid), await recentFromBlock(hre));
     if (events.length === 0) {
       throw new Error(`No SupplyUnwrapped event found for batch ${batchid} - run aaveSupplyUnwrap first`);
     }
     const unwrapCtHash = events[0].args.unwrapCtHash;
 
-    const client = await cofhe.createClientWithBatteries(signer);
+    const client = await getCofheClient(hre, signer);
     const { decryptedValue, signature } = await client.decryptForTx(unwrapCtHash).withoutACP().execute();
 
     const tx = await supplyFacet.finalizeSupplyRequests(batchid, decryptedValue, signature);

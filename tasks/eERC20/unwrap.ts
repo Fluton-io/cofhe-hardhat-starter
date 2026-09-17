@@ -1,6 +1,7 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
 import { EERC20 } from "../../types";
+import { getCofheClient } from "../../utils/cofheClient";
 
 task("unwrap", "Unwrap your eERC20 into ERC20")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -8,7 +9,7 @@ task("unwrap", "Unwrap your eERC20 into ERC20")
   .addOptionalParam("to", "The address to send the unwrapped tokens")
   .addOptionalParam("amount", "The amount of tokens to unwrap", "1000000")
   .setAction(async ({ signeraddress, tokenaddress, to, amount }, hre) => {
-    const { ethers, getChainId, deployments, getNamedAccounts, cofhe } = hre;
+    const { ethers, getChainId, deployments, getNamedAccounts } = hre;
     const chainId = await getChainId();
     const signerAddress = signeraddress || (await getNamedAccounts()).user;
     const signer = await ethers.getSigner(signerAddress);
@@ -28,7 +29,7 @@ task("unwrap", "Unwrap your eERC20 into ERC20")
     console.log(`Unwrapping ${amount} tokens from ${signer.address} to ${to} in token ${tokenaddress}`);
     await (await eTokenContract.unwrap(to, amount)).wait();
 
-    const client = await cofhe.createClientWithBatteries(signer);
+    const client = await getCofheClient(hre, signer);
 
     const pendingClaims = (await eTokenContract.getUserClaims(to)).filter((claim) => !claim.claimed);
 

@@ -119,7 +119,7 @@ library LibRepayRequest {
         s.aavePool.repay(asset, amount, uint256(interestRateMode), address(this));
 
         uint256 afterScaledDebt = IScaledBalanceToken(debtToken).scaledBalanceOf(address(this));
-        uint256 multiplier = (beforeScaledDebt - afterScaledDebt) / (amount / (10 ** 6));
+        uint256 multiplier = ((beforeScaledDebt - afterScaledDebt) * (10 ** 6)) / amount;
 
         _applyRepayToUsers(s, requests, multiplier, asset);
 
