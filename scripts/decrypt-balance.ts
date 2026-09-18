@@ -1,5 +1,6 @@
 import { ethers } from "hardhat";
-import { cofhejs, FheTypes } from "cofhejs/node";
+import hre from "hardhat";
+import { FheTypes } from "@cofhe/sdk";
 
 async function main() {
   const [signer] = await ethers.getSigners();
@@ -8,21 +9,7 @@ async function main() {
   const tokenAddress = "0xe7a31dD47e96FE04ac2C8B3c703e637Ae1ad88d5";
   const confidentialAddress = "0x92B7BE7B0f31d912f46fCD77EEb585034dc64d14";
 
-  const provider = new ethers.JsonRpcProvider(
-    "https://arb-sepolia.g.alchemy.com/v2/X-DloxDnihx5D3j28oyshSC43tYk-3T_"
-  );
-
-  // Initialize cofhejs using the Ethers initializer
-  const initResult = await cofhejs.initializeWithEthers({
-    ethersProvider: provider,
-    ethersSigner: signer,
-    environment: "TESTNET",
-  });
-
-  if (!initResult.success) {
-    console.error("Failed to initialize cofhejs:", initResult.error);
-    return;
-  }
+  const client = await hre.cofhe.createClientWithBatteries(signer);
 
   // Get contracts
   const token = await ethers.getContractAt("MockERC20", tokenAddress);
@@ -46,47 +33,12 @@ async function main() {
   try {
     console.log("Attempting to decrypt actual balance...");
 
-    const permitResult = await cofhejs.createPermit({
-      type: "self",
-      issuer: signer.address,
-    });
-
-    if (!permitResult.success) {
-      console.error("Failed to create permit:", permitResult.error);
-      return;
-    }
-
-    const permissionResult = cofhejs.getPermission();
-    if (!permissionResult.success) {
-      console.error("Failed to get permission:", permissionResult.error);
-      return;
-    }
-
-    const permission = permissionResult.data;
-
-    const sealedBalance = await confidentialToken.encBalanceOf(
-      signer.address,
-      permission
-    );
+    const sealedBalance = await confidentialToken.encBalanceOf(signer.address);
     console.log(`Sealed balance: ${sealedBalance}`);
 
-    const sealedBalanceBigInt =
-      typeof sealedBalance === "string" ? BigInt(sealedBalance) : sealedBalance;
+    const decryptedBalance = await client.decryptForView(sealedBalance, FheTypes.Uint128).withACP().execute();
 
-    const unsealResult = await cofhejs.unseal(
-      sealedBalanceBigInt,
-      FheTypes.Uint128
-    );
-
-    if (!unsealResult.success) {
-      console.error("Failed to unseal balance:", unsealResult.error);
-    } else {
-      const decryptedBalance = unsealResult.data;
-      // decryptedBalance should be a bigint for Uint128
-      console.log(
-        `${confSymbol} (decrypted): ${ethers.formatEther(decryptedBalance)}`
-      );
-    }
+    console.log(`${confSymbol} (decrypted): ${ethers.formatEther(decryptedBalance)}`);
   } catch (error: any) {
     console.log("Decryption failed:", error.message);
   }

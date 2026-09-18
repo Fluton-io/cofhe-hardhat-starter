@@ -33,15 +33,21 @@ abstract contract FHERC20UnwrapClaim {
         uint64 value,
         euint64 claimable
     ) internal {
-        _claims[euint64.unwrap(claimable)] = Claim({
-            ctHash: euint64.unwrap(claimable),
+        uint256 ctHash = uint256(euint64.unwrap(claimable));
+        _claims[ctHash] = Claim({
+            ctHash: ctHash,
             requestedAmount: value,
             decryptedAmount: 0,
             decrypted: false,
             to: to,
             claimed: false
         });
-        _userClaims[to].add(euint64.unwrap(claimable));
+        _userClaims[to].add(ctHash);
+    }
+
+    function publishUnwrapDecryption(uint256 ctHash, uint64 amount, bytes calldata signature) public {
+        if (_claims[ctHash].to == address(0)) revert ClaimNotFound();
+        FHE.publishDecryptResult(euint64.wrap(bytes32(ctHash)), amount, signature);
     }
 
     function _handleClaim(
@@ -49,22 +55,17 @@ abstract contract FHERC20UnwrapClaim {
     ) internal returns (Claim memory claim) {
         claim = _claims[ctHash];
 
-        // Check that the claimable amount exists and has not been claimed yet
         if (claim.to == address(0)) revert ClaimNotFound();
         if (claim.claimed) revert AlreadyClaimed();
 
-        // Get the decrypted amount (reverts if the amount is not decrypted yet)
-        uint64 amount = SafeCast.toUint64(FHE.getDecryptResult(ctHash));
+        uint64 amount = SafeCast.toUint64(FHE.getDecryptResult(bytes32(ctHash)));
 
-        // Update the claim
         claim.decryptedAmount = amount;
         claim.decrypted = true;
         claim.claimed = true;
 
-        // Update the claim in storage
         _claims[ctHash] = claim;
 
-        // Remove the claimable amount from the user's claimable set
         _userClaims[claim.to].remove(ctHash);
     }
 
@@ -79,7 +80,7 @@ abstract contract FHERC20UnwrapClaim {
 
     function getClaim(uint256 ctHash) public view returns (Claim memory) {
         Claim memory _claim = _claims[ctHash];
-        (uint256 amount, bool decrypted) = FHE.getDecryptResultSafe(ctHash);
+        (uint256 amount, bool decrypted) = FHE.getDecryptResultSafe(bytes32(ctHash));
         _claim.decryptedAmount = SafeCast.toUint64(amount);
         _claim.decrypted = decrypted;
         return _claim;
@@ -91,7 +92,7 @@ abstract contract FHERC20UnwrapClaim {
         for (uint256 i = 0; i < ctHashes.length; i++) {
             userClaims[i] = _claims[ctHashes[i]];
             (uint256 amount, bool decrypted) = FHE.getDecryptResultSafe(
-                ctHashes[i]
+                bytes32(ctHashes[i])
             );
             userClaims[i].decryptedAmount = SafeCast.toUint64(amount);
             userClaims[i].decrypted = decrypted;

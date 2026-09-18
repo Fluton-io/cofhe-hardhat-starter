@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
 import { EERC20 } from "../../types";
-import { sleep } from "../../utils";
+import { getCofheClient } from "../../utils/cofheClient";
 
 task("unwrap", "Unwrap your eERC20 into ERC20")
   .addOptionalParam("signeraddress", "The address of the signer")
@@ -27,11 +27,21 @@ task("unwrap", "Unwrap your eERC20 into ERC20")
 
     // Unwrapping tokens
     console.log(`Unwrapping ${amount} tokens from ${signer.address} to ${to} in token ${tokenaddress}`);
-    await eTokenContract.unwrap(to, amount);
+    await (await eTokenContract.unwrap(to, amount)).wait();
 
-    console.log("waiting for decryption...");
-    await sleep(30000); // Wait for 30 seconds to allow for decryption to complete
-    await eTokenContract.claimAllUnwrapped();
+    const client = await getCofheClient(hre, signer);
+
+    const pendingClaims = (await eTokenContract.getUserClaims(to)).filter((claim) => !claim.claimed);
+
+    console.log(`Publishing decrypt results for ${pendingClaims.length} pending claim(s)...`);
+    for (const claim of pendingClaims) {
+      const { decryptedValue, signature } = await client.decryptForTx(claim.ctHash).withoutACP().execute();
+      await (
+        await eTokenContract.publishUnwrapDecryption(claim.ctHash, decryptedValue, signature)
+      ).wait();
+    }
+
+    await (await eTokenContract.claimAllUnwrapped()).wait();
 
     console.log(`Unwrapped ${amount} of tokens from ${signer.address} to ${to} in token ${tokenaddress}`);
   });

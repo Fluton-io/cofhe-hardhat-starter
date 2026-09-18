@@ -4,7 +4,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-verify";
 import "hardhat-switch-network";
-import "cofhe-hardhat-plugin";
+import "@cofhe/hardhat-plugin";
 import "hardhat-deploy";
 
 import "./tasks";
@@ -17,7 +17,10 @@ const ARBISCAN_API_KEY: string = vars.get("ARBISCAN_API_KEY");
 const DEPLOYER_PRIVATE_KEY = vars.get("DEPLOYER_PRIVATE_KEY");
 const USER_PRIVATE_KEY = vars.get("USER_PRIVATE_KEY");
 const RELAYER_PRIVATE_KEY = vars.get("RELAYER_PRIVATE_KEY");
-const FAUCET_PRIVATE_KEY = vars.get("FAUCET_PRIVATE_KEY");
+const FAUCET_PRIVATE_KEY = vars.get(
+  "FAUCET_PRIVATE_KEY",
+  "0x0825cb7e6795e096c2f7e5e421332e046864f98f43d7b8cda2b655dfbf220202",
+);
 
 const accounts = [DEPLOYER_PRIVATE_KEY, USER_PRIVATE_KEY, RELAYER_PRIVATE_KEY, FAUCET_PRIVATE_KEY];
 
@@ -42,6 +45,20 @@ const config: HardhatUserConfig = {
   },
   // defaultNetwork: 'localcofhe',
   networks: {
+    // Local Hardhat network forking eth-sepolia (real Aave V3 deployment,
+    // mock CoFHE contracts auto-deployed by @cofhe/hardhat-plugin). Use
+    // `--network hardhat` explicitly since defaultNetwork is arb-sepolia.
+    // Deliberately NOT overriding chainId here: @cofhe/sdk's EncryptInputsBuilder
+    // hardcodes mock-vs-real behavior to `chainId === 31337` (chains.hardhat.id),
+    // so this network must keep reporting its natural chainId for the FHE mocks
+    // to work. config/addresses.ts lookups instead use ADDRESS_CHAIN_ID (see
+    // utils/resolveAddressChainId) to target the forked Sepolia deployment.
+    hardhat: {
+      forking: {
+        url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
+      },
+    },
+
     // Sepolia testnet configuration
     "eth-sepolia": {
       url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,

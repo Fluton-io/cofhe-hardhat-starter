@@ -1,14 +1,15 @@
 import { task } from "hardhat/config";
 import addresses from "../../config/addresses";
 import { EERC20 } from "../../types";
-import { cofhejs, FheTypes } from "cofhejs/node";
+import { FheTypes } from "@cofhe/sdk";
+import { getCofheClient } from "../../utils/cofheClient";
 
 task("balanceOf", "Get user balance")
   .addOptionalParam("signeraddress", "The address of the signer")
   .addOptionalParam("tokenaddress", "The address of the token contract")
   .addOptionalParam("useraddress", "The address of the user")
   .setAction(async ({ signeraddress, tokenaddress, useraddress }, hre) => {
-    const { ethers, getChainId, getNamedAccounts, deployments, cofhe } = hre;
+    const { ethers, getChainId, getNamedAccounts, deployments } = hre;
     const chainId = await getChainId();
     const signerAddress = signeraddress || (await getNamedAccounts()).deployer;
     const userAddress = useraddress || signerAddress;
@@ -36,14 +37,9 @@ task("balanceOf", "Get user balance")
       indicatedBalance.toString()
     );
 
-    await cofhe.expectResultSuccess(
-      await cofhejs.initializeWithEthers({
-        ethersProvider: ethers.provider,
-        ethersSigner: signer,
-        environment: "TESTNET",
-      })
-    );
-    const unsealedBalance = await cofhe.expectResultSuccess(await cofhejs.unseal(encryptedBalance, FheTypes.Uint64));
+    const client = await getCofheClient(hre, signer);
+
+    const unsealedBalance = await client.decryptForView(encryptedBalance, FheTypes.Uint64).withACP().execute();
 
     console.log(
       `Unsealed Balance of ${userAddress} in token ${tokenaddress} on chain ${chainId} is`,

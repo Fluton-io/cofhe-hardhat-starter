@@ -62,9 +62,7 @@ contract FHERC20Wrapper is FHERC20, Ownable, FHERC20UnwrapClaim {
             if (isFherc20) {
                 revert FHERC20InvalidErc20(address(erc20_));
             }
-        } catch {
-            // Not an FHERC20, continue
-        }
+        } catch {}
 
         uint8 tokenDecimals = _tryGetAssetDecimals(erc20_);
         uint8 maxDecimals = _maxDecimals();
@@ -126,7 +124,7 @@ contract FHERC20Wrapper is FHERC20, Ownable, FHERC20UnwrapClaim {
     function unwrap(address to, uint64 value) public {
         if (to == address(0)) to = msg.sender;
         euint64 burned = _burn(msg.sender, value);
-        FHE.decrypt(burned);
+        FHE.allowPublic(burned);
         _createClaim(to, value, burned);
         emit UnwrappedERC20(msg.sender, to, value);
     }
@@ -138,7 +136,6 @@ contract FHERC20Wrapper is FHERC20, Ownable, FHERC20UnwrapClaim {
     function claimUnwrapped(uint256 ctHash) public {
         Claim memory claim = _handleClaim(ctHash);
 
-        // Send the ERC20 to the recipient
         _erc20.safeTransfer(claim.to, claim.decryptedAmount * rate());
         emit ClaimedUnwrappedERC20(msg.sender, claim.to, claim.decryptedAmount);
     }

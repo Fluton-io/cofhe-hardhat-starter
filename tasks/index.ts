@@ -1,2 +1,2 @@
 import "./eERC20";
-import "./CoFHEBridge";
+import "./aave-adapter";

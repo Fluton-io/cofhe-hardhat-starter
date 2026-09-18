@@ -20,8 +20,10 @@
   },
   "homepage": "https://github.com/fhenixprotocol/cofhe-hardhat-starter#readme",
   "devDependencies": {
-    "@fhenixprotocol/cofhe-contracts": "^0.0.13",
-    "@fhenixprotocol/cofhe-mock-contracts": "^0.3.0",
+    "@cofhe/hardhat-plugin": "^0.7.1",
+    "@cofhe/mock-contracts": "^0.7.1",
+    "@cofhe/sdk": "^0.7.1",
+    "@fhenixprotocol/cofhe-contracts": "^0.2.0",
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
     "@nomicfoundation/hardhat-ethers": "^3.0.0",
     "@nomicfoundation/hardhat-ignition": "^0.15.0",
@@ -37,8 +39,6 @@
     "@types/mocha": ">=9.1.0",
     "@types/node": ">=18.0.0",
     "chai": "^4.2.0",
-    "cofhe-hardhat-plugin": "^0.3.0",
-    "cofhejs": "^0.3.1",
     "dotenv": "^16.4.7",
     "ethers": "^6.4.0",
     "hardhat": "^2.26.0",
@@ -49,13 +49,8 @@
     "typechain": "^8.3.0",
     "typescript": ">=4.5.0"
   },
-  "devDependencies2": {
-    "@fhenixprotocol/cofhe-contracts": "0.0.13",
-    "@fhenixprotocol/cofhe-mock-contracts": "^0.3.0",
-    "cofhe-hardhat-plugin": "^0.3.0",
-    "cofhejs": "^0.3.0"
-  },
   "dependencies": {
+    "@aave/core-v3": "^1.19.3",
     "@fhenixprotocol/contracts": "^0.3.1",
     "@layerzerolabs/lz-evm-protocol-v2": "^3.0.152",
     "@layerzerolabs/oapp-evm": "^0.4.1",

@@ -11,7 +11,7 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IFHERC20} from "./interfaces/IFHERC20.sol";
 import {FHERC20Utils} from "./utils/FHERC20Utils.sol";
 import {IFHERC20Errors} from "./interfaces/IFHERC20Errors.sol";
-import {FHE, Utils, euint64, InEuint64, ebool} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {FHE, euint64, externalEuint64, ebool} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -254,13 +254,14 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context {
      *
      * - `to` cannot be the zero address.
      * - the caller must have a balance of at least `value`.
-     * - `inValue` must be a `InEuint64` to preserve confidentiality.
+     * - `inValue` must be a `externalEuint64` to preserve confidentiality.
      */
     function confidentialTransfer(
         address to,
-        InEuint64 memory inValue
+        externalEuint64 inValue,
+        bytes calldata inputProof
     ) public virtual returns (euint64 transferred) {
-        euint64 value = FHE.asEuint64(inValue);
+        euint64 value = FHE.asEuint64(inValue, inputProof);
         transferred = _transfer(msg.sender, to, value);
     }
 
@@ -277,12 +278,13 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context {
     function confidentialTransferFrom(
         address from,
         address to,
-        InEuint64 memory inValue
+        externalEuint64 inValue,
+        bytes calldata inputProof
     ) public virtual returns (euint64 transferred) {
         if (!isOperator(from, msg.sender)) {
             revert FHERC20UnauthorizedSpender(from, msg.sender);
         }
-        euint64 value = FHE.asEuint64(inValue);
+        euint64 value = FHE.asEuint64(inValue, inputProof);
 
         transferred = _transfer(from, to, value);
     }
@@ -303,10 +305,11 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context {
 
     function confidentialTransferAndCall(
         address to,
-        InEuint64 memory inValue,
+        externalEuint64 inValue,
+        bytes calldata inputProof,
         bytes calldata data
     ) public virtual returns (euint64 transferred) {
-        euint64 value = FHE.asEuint64(inValue);
+        euint64 value = FHE.asEuint64(inValue, inputProof);
         transferred = _transferAndCall(msg.sender, to, value, data);
     }
 
@@ -324,13 +327,14 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context {
     function confidentialTransferFromAndCall(
         address from,
         address to,
-        InEuint64 memory inValue,
+        externalEuint64 inValue,
+        bytes calldata inputProof,
         bytes calldata data
     ) public virtual returns (euint64 transferred) {
         if (!isOperator(from, msg.sender)) {
             revert FHERC20UnauthorizedSpender(from, msg.sender);
         }
-        euint64 value = FHE.asEuint64(inValue);
+        euint64 value = FHE.asEuint64(inValue, inputProof);
 
         transferred = _transferAndCall(from, to, value, data);
     }
@@ -486,7 +490,7 @@ abstract contract FHERC20 is IFHERC20, IFHERC20Errors, Context {
         FHE.allowThis(_encTotalSupply);
 
         emit Transfer(from, to, _indicatorTick);
-        emit ConfidentialTransfer(from, to, euint64.unwrap(transferred));
+        emit ConfidentialTransfer(from, to, uint256(euint64.unwrap(transferred)));
     }
 
     /**
